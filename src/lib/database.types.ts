@@ -39,6 +39,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      coach_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          scopes: string[]
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          scopes?: string[]
+          token_hash: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          scopes?: string[]
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_logs: {
         Row: {
           calories: number | null

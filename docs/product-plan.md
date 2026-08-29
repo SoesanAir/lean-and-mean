@@ -139,6 +139,15 @@ reduced-motion, color-never-alone, one-handed thumb-zone layout.
 None needed for V1 (single expert user). The interface teaches itself: first-run shows Today
 with Day 1 and a "Start workout" primary action.
 
+## 4.7 Coach Read API (V1 — built)
+
+Read-only Edge Function `coach-read` with personal access tokens; full contract,
+security model and curl examples in **docs/coach-api.md**. Shared interpretation:
+the function bundles `src/lib/coach/shape.ts` (also unit-tested in the app), reads
+immutable `prescription_snapshot` + `performance`, and scopes every query to the
+user resolved from the token hash. Tokens are managed in-app (Progress → Coach
+API access), stored hash-only in `coach_tokens` (migration 0004).
+
 ## 5. Future (documented, not built)
 
 Spec §29 preserved: Weeks 2–3 ballistic rows; gravedigger later; pull-up bar → pull-ups/chin-ups;

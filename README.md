@@ -34,7 +34,13 @@ history from the pre-cloud version is imported automatically on first sign-in (i
 no duplicates). Details: `docs/product-plan.md` (decision 1) and `docs/supabase-setup.md`.
 
 Live verification: `npm run verify:supabase`, `node scripts/test-rls-live.mjs`,
-`node scripts/test-sync-live.mjs`.
+`node scripts/test-sync-live.mjs`, `node scripts/test-coach-api-live.mjs`.
+
+## Coach Read API
+
+Read-only HTTP API for AI coaches (`/today`, `/day`, `/week`,
+`/exercise-history`, `/recent-notes`), authenticated with personal access
+tokens created under Progress → Coach API access. See `docs/coach-api.md`.
 
 ## Docs
 
