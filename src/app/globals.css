@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Design tokens — see design-system/MASTER.md */
+@theme inline {
+  --color-bg: #09090b;
+  --color-surface: #141417;
+  --color-raised: #1d1d22;
+  --color-line: #27272a;
+  --color-hi: #fafafa;
+  --color-mid: #a1a1aa;
+  --color-low: #71717a;
+  --color-volt: #fb923c; /* accent: "blaze" orange (token name kept for stability) */
+  --color-onvolt: #0a0a0a;
+  --color-hard: #f87171;
+  --color-med: #fbbf24;
+  --color-lite: #38bdf8;
+  --color-rest: #34d399;
+  --color-note: #fbbf24;
+  --color-danger: #f87171;
+  --font-display: var(--font-barlow), "Arial Narrow", sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-hi);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+/* label style: small uppercase tracked */
+.label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-mid);
+  font-weight: 600;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* press feedback everywhere */
+button {
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* focus ring for keyboard access */
+:focus-visible {
+  outline: 2px solid var(--color-volt);
+  outline-offset: 2px;
+}
