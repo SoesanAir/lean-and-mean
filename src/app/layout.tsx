@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
+import { AuthGate } from "@/components/AuthGate";
+import { SyncBadge } from "@/components/SyncBadge";
 
 const barlow = Barlow_Condensed({
   weight: ["500", "600", "700"],
@@ -39,8 +41,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${barlow.variable} ${inter.variable} antialiased`}>
-        <div className="mx-auto min-h-dvh w-full max-w-md pb-24">{children}</div>
-        <BottomNav />
+        <AuthGate>
+          <div className="mx-auto min-h-dvh w-full max-w-md pb-24">{children}</div>
+          <BottomNav />
+          <SyncBadge />
+        </AuthGate>
       </body>
     </html>
   );

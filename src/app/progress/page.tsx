@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AccountSection } from "@/components/AccountSection";
 import { Card } from "@/components/ui";
 import { sessionProgress } from "@/lib/session/progress";
 import { useAppState } from "@/lib/session/useStore";
@@ -396,6 +397,8 @@ export default function ProgressPage() {
             })}
           </div>
         </section>
+
+        <AccountSection />
       </main>
     </div>
   );

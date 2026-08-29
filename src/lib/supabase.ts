@@ -9,8 +9,9 @@
 //   NEXT_PUBLIC_SUPABASE_ANON_KEY  — anon/public API key
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
-let client: SupabaseClient | null = null;
+let client: SupabaseClient<Database> | null = null;
 let warned = false;
 
 /** True when both Supabase env vars are present. */
@@ -26,7 +27,7 @@ export function isSupabaseConfigured(): boolean {
  * Returns null — with a single console.warn — when the env vars are missing,
  * so the local-first app keeps working without any cloud configuration.
  */
-export function getSupabase(): SupabaseClient | null {
+export function getSupabase(): SupabaseClient<Database> | null {
   if (client) return client;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -43,6 +44,6 @@ export function getSupabase(): SupabaseClient | null {
     return null;
   }
 
-  client = createClient(url, anonKey);
+  client = createClient<Database>(url, anonKey);
   return client;
 }

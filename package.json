@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "verify:supabase": "node scripts/verify-supabase.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

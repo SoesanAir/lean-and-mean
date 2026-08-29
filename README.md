@@ -23,12 +23,18 @@ Open http://localhost:3000 on your phone (same network: use your machine's LAN I
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
 
-## Storage
+## Storage & sync
 
-V1 is **local-first**: all state autosaves synchronously to `localStorage` on every change
-(sets, notes, timers, daily logs) — closing/reloading never loses a workout. The complete
-Supabase schema, migrations and seed live in `supabase/`; see `docs/supabase-setup.md` for
-wiring up cloud persistence (next milestone).
+**Supabase is the source of truth; localStorage is the offline cache.** Sign in with
+email/password (login screen); every change autosaves locally in the same tap (instant UI)
+and syncs to Supabase in the background with retry — the badge in the top-right shows
+Saving… / Synced / Offline / Sync failed. Open the app on another device with the same
+account and the active workout, notes, history and daily logs are there. Existing local
+history from the pre-cloud version is imported automatically on first sign-in (idempotent,
+no duplicates). Details: `docs/product-plan.md` (decision 1) and `docs/supabase-setup.md`.
+
+Live verification: `npm run verify:supabase`, `node scripts/test-rls-live.mjs`,
+`node scripts/test-sync-live.mjs`.
 
 ## Docs
 

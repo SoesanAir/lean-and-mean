@@ -39,13 +39,23 @@ design-system/            MASTER.md design tokens & rules
 
 ### Key decisions (spec §32: decide, document, continue)
 
-1. **Local-first storage in V1.** No Supabase credentials exist in this environment, and the
-   spec's acceptance test is about *never losing mid-workout state*. The data layer is a small
-   repository (`lib/session/store.ts`) persisting to `localStorage` synchronously on every
-   mutation (the most aggressive autosave possible). The full Supabase schema, migrations,
-   seed SQL and client module ship in this milestone; wiring the repository to Supabase (with
-   local cache as offline buffer) is the recommended next milestone once env keys are provided.
-   Nothing in the UI knows where data is stored, so the swap is contained.
+1. **Supabase is the source of truth; localStorage is the offline cache** (cloud milestone,
+   2026-08-29). The UI still writes synchronously to the local store (`lib/session/store.ts`)
+   so taps stay instant; the sync engine (`lib/cloud/sync.ts`) detects changes shadow-diff
+   style, pushes debounced upserts, and pulls + merges on sign-in / tab-visibility / reconnect.
+   Merge rules (`lib/cloud/merge.ts`, pure + unit-tested):
+   finished cloud sessions always win (history immutable); otherwise last-write-wins per
+   entity via `updated_at` vs local edit time; local entities the cloud never saw are pushed
+   (this doubles as the legacy localStorage import — UUID ids make it idempotent, no
+   duplicates); entities deleted remotely are dropped locally; if two devices hold *different*
+   active sessions the cloud one wins (a partial unique index allows only one unfinished
+   session per user). Sessions sync as whole documents: results + notes live in
+   `workout_sessions.performance` (jsonb), the prescription in `prescription_snapshot`
+   (jsonb). Failed pushes keep their dirty flags and retry — edits are never silently lost.
+   **Auth:** email/password (Supabase Auth, autoconfirm on), whole app gated by `AuthGate`;
+   signing in with a different account on a device clears the local cache first. Anonymous
+   sign-in remains enabled only for the verification tooling. Sync status is surfaced by a
+   small badge (Saving… / Synced / Offline / Sync failed — retry).
 2. **Templates are TypeScript constants in V1.** Week 1 is seeded both as TS constants (used by
    the running app) and as SQL seed (for the database). Editing templates in-app is out of scope.
 3. **Snapshot-on-start.** Starting a workout deep-copies the day's template into a

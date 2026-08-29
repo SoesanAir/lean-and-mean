@@ -309,6 +309,16 @@ export function setDailyNote(date: string, text: string): void {
   });
 }
 
+// ---------------- cloud sync support ----------------
+
+/**
+ * Atomically replace the whole local state (used by the cloud sync engine
+ * when merging pulled data). Persists to localStorage like any mutation.
+ */
+export function replaceState(next: AppState): void {
+  persist(next);
+}
+
 // ---------------- test/support ----------------
 
 /** test-only: reset in-memory cache so load() re-reads storage */

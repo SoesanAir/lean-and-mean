@@ -1,9 +1,27 @@
 # Supabase setup
 
-How to stand up the Lean & Mean database. **Note:** the app currently runs
-local-first (localStorage) and works without any of this — wiring the app's
-repository to Supabase (cloud sync with local cache) is the next milestone.
-Doing this setup now prepares the database so that milestone is a drop-in.
+How to stand up the Lean & Mean database.
+
+> **Status (2026-08-29):** DONE for project `qslnimyifpkzmlxlpsgv` — migrations
+> + seed applied and verified, `.env.local` configured, repo `supabase link`ed.
+> Workout/daily-metric logging is still local-first (localStorage); the **food
+> photo log is Supabase-backed** and is the first cloud feature. Full cloud
+> sync of workouts is the next milestone.
+
+## Auth model
+
+**Email/password** (Supabase Auth, email autoconfirm enabled — no SMTP needed).
+The whole app is gated by `AuthGate`; create your account once via the login
+screen, then the same account on every device sees the same data. All RLS
+policies (`user_id = auth.uid()`, storage `owner = auth.uid()`) scope data to
+that account. Anonymous sign-in remains enabled only for the verification
+scripts (`npm run verify:supabase`, `node scripts/test-rls-live.mjs`); once
+your account exists you can optionally disable public signups in
+Auth → Providers to lock the project down further.
+
+Live checks: `npm run verify:supabase` (read-only), `node
+scripts/test-rls-live.mjs` (RLS isolation), `node scripts/test-sync-live.mjs`
+(cross-device acceptance flow with a throwaway account).
 
 ## 1. Create a Supabase project
 
