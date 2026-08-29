@@ -30,6 +30,7 @@ export const EXERCISES: Exercise[] = [
     category: "BALLISTIC",
     equipment: ["KETTLEBELL"],
     isAvailable: true,
+    aliases: ["swing", "kettlebell swing", "kb swing"],
     defaultGrip: "HANDLE",
     purpose: ["hip power", "posterior chain", "conditioning", "grip"],
     watchFor: [
@@ -113,6 +114,7 @@ export const EXERCISES: Exercise[] = [
     category: "HINGE",
     equipment: ["KETTLEBELL"],
     isAvailable: true,
+    aliases: ["rdl", "romanian deadlift", "single leg deadlift"],
     defaultGrip: "HANDLE",
     purpose: ["hamstrings", "glutes", "balance", "hip hinge"],
     watchFor: ["Square hips", "Long spine", "Hip hinge", "Resist rotation"],
@@ -125,6 +127,7 @@ export const EXERCISES: Exercise[] = [
     category: "PULL",
     equipment: ["KETTLEBELL"],
     isAvailable: true,
+    aliases: ["row", "single arm row", "kb row"],
     defaultGrip: "HANDLE",
     purpose: ["lats", "upper back", "biceps", "grip"],
     watchFor: [
@@ -172,6 +175,7 @@ export const EXERCISES: Exercise[] = [
     category: "PUSH",
     equipment: ["KETTLEBELL"],
     isAvailable: true,
+    aliases: ["clean and press", "clean & press", "clean press", "c&p", "cp"],
     defaultGrip: "HANDLE",
     purpose: ["shoulders", "triceps", "upper body strength", "trunk stabilization"],
     watchFor: [
@@ -200,6 +204,7 @@ export const EXERCISES: Exercise[] = [
     category: "PUSH",
     equipment: ["BODYWEIGHT"],
     isAvailable: true,
+    aliases: ["pushup", "press up"],
     defaultGrip: "BODYWEIGHT",
     purpose: ["chest", "triceps", "trunk"],
     watchFor: ["Rigid plank body", "Full range", "Elbows ~45°", "Stop before form breaks"],
@@ -263,6 +268,7 @@ export const EXERCISES: Exercise[] = [
     category: "CORE",
     equipment: ["KETTLEBELL"],
     isAvailable: true,
+    aliases: ["figure eight"],
     defaultGrip: "HANDLE",
     purpose: ["coordination", "grip", "hip stability"],
     watchFor: ["Controlled hand exchange", "Hips stay stable", "Do not rush"],
@@ -308,6 +314,7 @@ export const EXERCISES: Exercise[] = [
     category: "CORE",
     equipment: ["KETTLEBELL"],
     isAvailable: true,
+    aliases: ["plank drag", "kb drag"],
     defaultGrip: "HANDLE",
     purpose: ["anti-rotation", "abs", "shoulders", "chest stabilization"],
     watchFor: [

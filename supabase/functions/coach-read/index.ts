@@ -11,6 +11,7 @@
 //   /coach-read/today[?tz=Asia/Jerusalem]
 //   /coach-read/day?date=YYYY-MM-DD
 //   /coach-read/week[?date=YYYY-MM-DD][&tz=...]
+//   /coach-read/exercises[?query=clean+press][&limit=50]   (name → stable id)
 //   /coach-read/exercise-history?exerciseId=<id>[&limit=20]
 //   /coach-read/recent-notes[?limit=20]
 //
@@ -19,6 +20,7 @@
 
 import {
   collectNotes,
+  exerciseCatalog,
   exerciseHistory,
   shapeDailyLog,
   shapeSessionDetail,
@@ -190,6 +192,14 @@ async function handleWeek(userId: string, date: string) {
   );
 }
 
+async function handleExercises(userId: string, query: string | null, limit: number) {
+  const sessions = await sessionsWhere(userId, "", 100);
+  return ok({
+    query: query ?? null,
+    exercises: exerciseCatalog(sessions.map(rowToSession), query, limit),
+  });
+}
+
 async function handleExerciseHistory(userId: string, exerciseId: string, limit: number) {
   const sessions = await sessionsWhere(userId, "", 100);
   return ok({
@@ -244,6 +254,13 @@ Deno.serve(async (req: Request) => {
         if (!DATE_RE.test(date)) return fail(400, "bad_request", "date must be YYYY-MM-DD.");
         return await handleWeek(userId, date);
       }
+      case "/exercises": {
+        const query = url.searchParams.get("query");
+        if (query !== null && query.length > 120) {
+          return fail(400, "bad_request", "query is too long (max 120 chars).");
+        }
+        return await handleExercises(userId, query, parseLimit(url, 50));
+      }
       case "/exercise-history": {
         const exerciseId = url.searchParams.get("exerciseId");
         if (!exerciseId || !/^[a-z0-9-]{1,60}$/.test(exerciseId)) {
@@ -254,7 +271,7 @@ Deno.serve(async (req: Request) => {
       case "/recent-notes":
         return await handleRecentNotes(userId, parseLimit(url, 20));
       default:
-        return fail(404, "not_found", "Routes: /today /day /week /exercise-history /recent-notes");
+        return fail(404, "not_found", "Routes: /today /day /week /exercises /exercise-history /recent-notes");
     }
   } catch {
     // never leak internal DB errors to callers

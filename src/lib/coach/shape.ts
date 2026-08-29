@@ -16,7 +16,7 @@ import type {
 } from "../types.ts";
 import { EMPHASIS_LABELS } from "../types.ts";
 import { sessionProgress } from "../session/progress.ts";
-import { EXERCISES_BY_ID } from "../seed/exercises.ts";
+import { EXERCISES, EXERCISES_BY_ID } from "../seed/exercises.ts";
 
 // ---------- small helpers ----------
 
@@ -405,6 +405,116 @@ export function collectNotes(
   }
 
   return notes.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, limit);
+}
+
+// ---------- exercise discovery (for AI coaches: name → stable id) ----------
+
+export interface ExerciseCatalogEntry {
+  exerciseId: string;
+  name: string;
+  aliases?: string[];
+  /** date last seen in a session snapshot; absent when never performed */
+  lastPerformed?: string;
+  /** sessions in the inspected window that contain this exercise */
+  sessionsCount: number;
+  /** false = exists in the library but has no recorded history */
+  performed: boolean;
+}
+
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function matchesQuery(query: string, haystacks: string[]): boolean {
+  const tokens = normalize(query).split(" ").filter(Boolean);
+  if (tokens.length === 0) return true;
+  const joined = haystacks.map(normalize).join(" | ");
+  // every query token must appear somewhere (forgiving substring match:
+  // "clean press" ⊂ "clean strict press"; alias list covers "c&p" etc.)
+  return tokens.every((t) => joined.includes(t));
+}
+
+function sessionExerciseIds(session: WorkoutSession): string[] {
+  const ids: string[] = [];
+  for (const section of session.snapshot.sections) {
+    switch (section.type) {
+      case "SKILL":
+      case "INTERVAL":
+        ids.push(section.exerciseId);
+        break;
+      case "STRAIGHT_SETS":
+      case "CIRCUIT":
+        ids.push(...section.prescriptions.map((p) => p.exerciseId));
+        break;
+      case "EMOM":
+        ids.push(...section.pattern.map((m) => m.exerciseId));
+        break;
+      case "AMRAP":
+        ids.push(...section.round.map((m) => m.exerciseId));
+        break;
+      case "FLOW":
+        ids.push(...section.movements.map((m) => m.exerciseId));
+        break;
+    }
+  }
+  return ids;
+}
+
+/**
+ * Resolve human names ("clean press", "C&P") to stable exercise ids.
+ * Without a query: the user's performed exercises. With a query: performed
+ * matches first, then matching library exercises (performed=false) so the
+ * coach can also answer "you have never trained that".
+ */
+export function exerciseCatalog(
+  sessions: WorkoutSession[],
+  query: string | null,
+  limit: number,
+): ExerciseCatalogEntry[] {
+  const usage = new Map<string, { lastPerformed: string; sessionsCount: number }>();
+  for (const s of sessions) {
+    for (const id of new Set(sessionExerciseIds(s))) {
+      const u = usage.get(id);
+      if (u) {
+        u.sessionsCount += 1;
+        if (s.date > u.lastPerformed) u.lastPerformed = s.date;
+      } else {
+        usage.set(id, { lastPerformed: s.date, sessionsCount: 1 });
+      }
+    }
+  }
+
+  const toEntry = (id: string): ExerciseCatalogEntry => {
+    const ex = EXERCISES_BY_ID[id];
+    const u = usage.get(id);
+    return {
+      exerciseId: id,
+      name: ex?.name ?? id,
+      aliases: ex?.aliases,
+      lastPerformed: u?.lastPerformed,
+      sessionsCount: u?.sessionsCount ?? 0,
+      performed: Boolean(u),
+    };
+  };
+
+  const searchable = (id: string): string[] => {
+    const ex = EXERCISES_BY_ID[id];
+    return [id, ex?.name ?? "", ...(ex?.aliases ?? [])];
+  };
+
+  const performed = [...usage.keys()]
+    .filter((id) => !query || matchesQuery(query, searchable(id)))
+    .map(toEntry)
+    .sort((a, b) => (a.lastPerformed! < b.lastPerformed! ? 1 : -1));
+
+  let library: ExerciseCatalogEntry[] = [];
+  if (query) {
+    library = EXERCISES.filter(
+      (ex) => !usage.has(ex.id) && matchesQuery(query, [ex.id, ex.name, ...(ex.aliases ?? [])]),
+    ).map((ex) => toEntry(ex.id));
+  }
+
+  return [...performed, ...library].slice(0, limit);
 }
 
 // ---------- week ----------

@@ -1,0 +1,502 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Lean & Mean Coach Read API",
+    "version": "1.0.0",
+    "description": "Read-only access to one athlete's Lean & Mean training data: workout sessions (prescription + actual performance), timed-block results, free-text notes and daily metrics. All data belongs to the owner of the bearer token. Finished sessions are immutable historical records. Dates are local training dates (default timezone Asia/Jerusalem)."
+  },
+  "servers": [
+    { "url": "https://qslnimyifpkzmlxlpsgv.supabase.co/functions/v1/coach-read" }
+  ],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/today": {
+      "get": {
+        "operationId": "getToday",
+        "summary": "Today's workout and daily log",
+        "description": "Use for questions about TODAY: 'how did I do today', today's plan, today's notes or metrics. Returns today's session(s) in full detail (per-set actuals, weights, grips, notes, timed-block results) plus today's daily log. Do not use for weekly analysis (use getWeek) or single-exercise progression (use findExercises + getExerciseHistory).",
+        "parameters": [{ "$ref": "#/components/parameters/tz" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/DayResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/day": {
+      "get": {
+        "operationId": "getDay",
+        "summary": "One specific calendar day",
+        "description": "Same shape as getToday but for an explicit date (YYYY-MM-DD). Use when the user names a specific day ('last Tuesday', 'the 26th') — compute the date first.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "Calendar date, YYYY-MM-DD.",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          { "$ref": "#/components/parameters/tz" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/DayResponse" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/week": {
+      "get": {
+        "operationId": "getWeek",
+        "summary": "Training week overview (Mon–Sun)",
+        "description": "Use for weekly reviews, consistency and completion questions. Returns per-day session summaries (completion %, difficulty, benchmark results), daily logs, and the week's notes. Fetch details for a specific day with getDay only when needed.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "description": "Any date inside the wanted week (YYYY-MM-DD). Defaults to today.",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          { "$ref": "#/components/parameters/tz" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Week overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "start": { "type": "string", "description": "Monday, YYYY-MM-DD" },
+                            "end": { "type": "string" },
+                            "workoutsCompleted": { "type": "integer" },
+                            "days": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "date": { "type": "string" },
+                                  "sessions": { "type": "array", "items": { "$ref": "#/components/schemas/SessionSummary" } },
+                                  "dailyLog": { "$ref": "#/components/schemas/DailyLog" }
+                                }
+                              }
+                            },
+                            "notes": { "type": "array", "items": { "$ref": "#/components/schemas/Note" } }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/exercises": {
+      "get": {
+        "operationId": "findExercises",
+        "summary": "Resolve exercise names to stable exercise IDs",
+        "description": "ALWAYS call this first when the user asks about a specific movement and you don't already know its exerciseId. Forgiving search: 'clean press', 'clean & press' and 'C&P' all resolve. Returns stable exerciseId values for getExerciseHistory, plus lastPerformed and sessionsCount. performed=false means the exercise exists in the library but has no recorded history (tell the user that instead of inventing data). Without query: all exercises the user has actually trained.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "Human name or fragment, e.g. 'clean press'.",
+            "schema": { "type": "string", "maxLength": 120 }
+          },
+          { "$ref": "#/components/parameters/limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching exercises, most recently performed first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "query": { "type": ["string", "null"] },
+                            "exercises": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "exerciseId": { "type": "string", "description": "Stable slug for getExerciseHistory." },
+                                  "name": { "type": "string" },
+                                  "aliases": { "type": "array", "items": { "type": "string" } },
+                                  "lastPerformed": { "type": "string", "description": "YYYY-MM-DD; absent if never performed." },
+                                  "sessionsCount": { "type": "integer" },
+                                  "performed": { "type": "boolean" }
+                                },
+                                "required": ["exerciseId", "name", "sessionsCount", "performed"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/exercise-history": {
+      "get": {
+        "operationId": "getExerciseHistory",
+        "summary": "Past performances of one exercise",
+        "description": "Use for progression questions about ONE movement, after resolving its exerciseId with findExercises. Entries cover straight sets/circuits (per-set actual reps left/right, weight, grip, notes) AND timed-block appearances (EMOM/AMRAP with the block's single kettlebell weight). Newest first.",
+        "parameters": [
+          {
+            "name": "exerciseId",
+            "in": "query",
+            "required": true,
+            "description": "Stable exercise slug from findExercises, e.g. 'clean-strict-press'.",
+            "schema": { "type": "string", "pattern": "^[a-z0-9-]{1,60}$" }
+          },
+          { "$ref": "#/components/parameters/limit" }
+        ],
+        "responses": {
+          "200": {
+            "description": "History entries, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "exerciseId": { "type": "string" },
+                            "entries": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "date": { "type": "string" },
+                                  "day": { "type": "integer" },
+                                  "sessionName": { "type": "string" },
+                                  "context": { "type": "string", "description": "e.g. 'SETS — CLEAN + STRICT PRESS' or 'EMOM — MAIN EMOM (16 kg block)'" },
+                                  "prescription": {
+                                    "type": "object",
+                                    "properties": {
+                                      "sets": { "type": "integer" },
+                                      "reps": { "type": ["integer", "string"] },
+                                      "perSide": { "type": "boolean" },
+                                      "durationSec": { "type": "integer" },
+                                      "weightKg": { "type": "number" },
+                                      "blockWeightKg": { "type": ["number", "null"] },
+                                      "grip": { "type": "string", "enum": ["HANDLE", "HORNS", "BALL", "BOTTOM_UP_HANDLE", "BODYWEIGHT", "NONE"] }
+                                    }
+                                  },
+                                  "sets": { "type": "array", "items": { "$ref": "#/components/schemas/SetResult" } },
+                                  "blockResult": {
+                                    "type": "object",
+                                    "properties": {
+                                      "resultSummary": { "type": "string" },
+                                      "completedMinutes": { "type": "integer" },
+                                      "completedRounds": { "type": "integer" },
+                                      "extraReps": { "type": "integer" }
+                                    }
+                                  },
+                                  "notes": { "type": "array", "items": { "type": "string" } }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/recent-notes": {
+      "get": {
+        "operationId": "getRecentNotes",
+        "summary": "Recent free-text training notes with context",
+        "description": "Use when subjective information matters: pain, fatigue, technique quality, how sets felt, repeated complaints ('what have I been saying about my shoulder'). Each note carries a human-readable context (exercise, set, block or daily log + day). Newest first.",
+        "parameters": [{ "$ref": "#/components/parameters/limit" }],
+        "responses": {
+          "200": {
+            "description": "Notes, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "notes": { "type": "array", "items": { "$ref": "#/components/schemas/Note" } }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Lean & Mean personal access token (format lnm_…), created in the app under Progress → Coach API access. Read-only scope."
+      }
+    },
+    "parameters": {
+      "tz": {
+        "name": "tz",
+        "in": "query",
+        "required": false,
+        "description": "IANA timezone for day boundaries. Defaults to Asia/Jerusalem.",
+        "schema": { "type": "string" }
+      },
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "description": "Max entries (server caps at 100).",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "schemas": {
+      "Envelope": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "string", "const": "v1" },
+          "generatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["version", "generatedAt"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "string" },
+          "error": {
+            "type": "object",
+            "properties": { "code": { "type": "string" }, "message": { "type": "string" } }
+          }
+        }
+      },
+      "SetResult": {
+        "type": "object",
+        "description": "One performed set. perSide exercises report left/right separately.",
+        "properties": {
+          "setIndex": { "type": "integer" },
+          "completed": { "type": "boolean" },
+          "skipped": { "type": "boolean" },
+          "skipReason": { "type": "string" },
+          "actualReps": { "type": "integer" },
+          "actualRepsLeft": { "type": "integer" },
+          "actualRepsRight": { "type": "integer" },
+          "actualDurationSec": { "type": "integer" },
+          "perceivedDifficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "note": { "type": "string" },
+          "prescribed": { "type": "string", "description": "What was prescribed, e.g. '5 / side'." }
+        }
+      },
+      "SessionSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "date": { "type": "string" },
+          "day": { "type": "integer", "description": "Program day 1–7." },
+          "name": { "type": "string" },
+          "intensity": { "type": "string", "enum": ["HARD", "MEDIUM", "LIGHT", "REST"] },
+          "status": { "type": "string", "enum": ["completed", "active"] },
+          "completionPercent": { "type": "integer" },
+          "difficulty": { "type": ["string", "null"], "enum": ["TOO_EASY", "RIGHT", "HARD", "TOO_HARD", null] },
+          "pain": { "type": ["boolean", "null"] },
+          "benchmarks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "title": { "type": "string" }, "result": { "type": ["string", "null"] } }
+            }
+          },
+          "workoutNote": { "type": "string" }
+        }
+      },
+      "SessionDetail": {
+        "type": "object",
+        "description": "Full session: the prescription snapshot as it was that day, joined with actual performance. Timed sections carry ONE kettlebell weight for the whole block (blockWeightKg); grips vary per movement.",
+        "properties": {
+          "id": { "type": "string" },
+          "date": { "type": "string" },
+          "day": { "type": "integer" },
+          "name": { "type": "string" },
+          "intensity": { "type": "string" },
+          "emphasis": { "type": "string", "description": "QUALITY >>> QUANTITY | QUALITY > QUANTITY | QUALITY + VOLUME | OUTPUT" },
+          "goal": { "type": "string" },
+          "quote": { "type": "string" },
+          "status": { "type": "string", "enum": ["completed", "active"] },
+          "startedAt": { "type": "string", "format": "date-time" },
+          "finishedAt": { "type": "string", "format": "date-time" },
+          "completion": {
+            "type": "object",
+            "properties": { "done": { "type": "integer" }, "total": { "type": "integer" }, "percent": { "type": "integer" } }
+          },
+          "feedback": {
+            "type": ["object", "null"],
+            "properties": {
+              "difficulty": { "type": "string", "enum": ["TOO_EASY", "RIGHT", "HARD", "TOO_HARD"] },
+              "energy": { "type": "integer" },
+              "sorenessBefore": { "type": "integer" },
+              "sorenessAfter": { "type": "integer" },
+              "pain": { "type": "boolean" },
+              "painNote": { "type": "string" }
+            }
+          },
+          "workoutNote": { "type": "string" },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Shape varies by type: SKILL (result: duration/best hold), STRAIGHT_SETS/CIRCUIT (exercises[] with prescription + sets[]), EMOM/AMRAP/FLOW (blockWeightKg, movements[], result with rounds/minutes/cycleNotes), INTERVAL (rounds).",
+              "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "type": { "type": "string", "enum": ["SKILL", "STRAIGHT_SETS", "CIRCUIT", "EMOM", "AMRAP", "FLOW", "INTERVAL"] },
+                "note": { "type": "string" },
+                "blockWeightKg": { "type": ["number", "null"] },
+                "isBenchmark": { "type": "boolean" },
+                "exercises": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "prescription": {
+                        "type": "object",
+                        "properties": {
+                          "exerciseId": { "type": "string" },
+                          "name": { "type": "string" },
+                          "sets": { "type": "integer" },
+                          "reps": { "type": ["integer", "string"] },
+                          "perSide": { "type": "boolean" },
+                          "durationSec": { "type": "integer" },
+                          "tempo": { "type": "string" },
+                          "weightKg": { "type": "number" },
+                          "grip": { "type": "string" }
+                        }
+                      },
+                      "sets": { "type": "array", "items": { "$ref": "#/components/schemas/SetResult" } },
+                      "note": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "DailyLog": {
+        "type": ["object", "null"],
+        "properties": {
+          "date": { "type": "string" },
+          "weightKg": { "type": "number" },
+          "waistCm": { "type": "number" },
+          "steps": { "type": "integer" },
+          "sleepHours": { "type": "number" },
+          "energy": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "soreness": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "proteinG": { "type": "integer" },
+          "calories": { "type": "integer" },
+          "note": { "type": "string" }
+        }
+      },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string" },
+          "context": { "type": "string", "description": "What the note refers to, e.g. 'Clean + Strict Press — set 1 (Day 1 — HARD STRENGTH)'." },
+          "text": { "type": "string" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["date", "context", "text"]
+      }
+    },
+    "responses": {
+      "DayResponse": {
+        "description": "Sessions (usually 0 or 1) + daily log for the day.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                { "$ref": "#/components/schemas/Envelope" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": { "type": "string" },
+                        "sessions": { "type": "array", "items": { "$ref": "#/components/schemas/SessionDetail" } },
+                        "dailyLog": { "$ref": "#/components/schemas/DailyLog" }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Invalid parameters.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Unauthorized": {
+        "description": "Missing, invalid or revoked token.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "Unknown route.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "MethodNotAllowed": {
+        "description": "The API is read-only; only GET is supported.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  }
+}

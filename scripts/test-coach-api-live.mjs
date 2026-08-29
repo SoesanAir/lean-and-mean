@@ -133,6 +133,24 @@ const w = await call(tokenA, "/week");
 check("/week → completed count + today's summary present", w.status === 200 && w.body?.data?.workoutsCompleted >= 1 && w.body?.data?.days?.some((x) => x.date === today && x.sessions?.[0]?.completionPercent !== undefined));
 check("/week notes include set note", w.body?.data?.notes?.some((n) => n.text === "16 kg felt easy."));
 
+// ---------- API: GPT flow — resolve name → id → history ----------
+const find = await call(tokenA, "/exercises?query=clean%20press");
+const resolved = find.body?.data?.exercises?.find((e) => e.performed);
+check("/exercises 'clean press' resolves to clean-strict-press", find.status === 200 && resolved?.exerciseId === "clean-strict-press", JSON.stringify(find.body?.data?.exercises?.map((e) => e.exerciseId)));
+check("/exercises entry carries lastPerformed + sessionsCount", resolved?.lastPerformed === today && resolved?.sessionsCount === 1);
+const findAmp = await call(tokenA, "/exercises?query=" + encodeURIComponent("C&P"));
+check("/exercises 'C&P' alias resolves", findAmp.body?.data?.exercises?.some((e) => e.exerciseId === "clean-strict-press"));
+const findAll = await call(tokenA, "/exercises");
+check("/exercises without query lists only performed exercises", findAll.status === 200 && findAll.body?.data?.exercises?.length === 1 && findAll.body?.data?.exercises?.[0]?.performed === true);
+const findUnknown = await call(tokenA, "/exercises?query=zercher%20yoke");
+check("/exercises unknown name → empty list", findUnknown.status === 200 && findUnknown.body?.data?.exercises?.length === 0);
+const findUntrained = await call(tokenA, "/exercises?query=pull-up");
+check("/exercises untrained library exercise → performed=false", findUntrained.body?.data?.exercises?.some((e) => e.exerciseId === "pull-up" && e.performed === false));
+const findLongQ = await call(tokenA, "/exercises?query=" + "x".repeat(200));
+check("/exercises over-long query → 400", findLongQ.status === 400);
+const followUp = await call(tokenA, `/exercise-history?exerciseId=${resolved?.exerciseId}`);
+check("GPT flow: history via resolved id returns real results", followUp.status === 200 && followUp.body?.data?.entries?.length >= 2);
+
 // ---------- API: exercise history ----------
 const h = await call(tokenA, "/exercise-history?exerciseId=clean-strict-press");
 const contexts = (h.body?.data?.entries ?? []).map((e) => e.context).join(" | ");
@@ -167,7 +185,9 @@ check("B: account created", !upB.error && !!upB.data.session, upB.error?.message
 const tokenB = newToken();
 await B.from("coach_tokens").insert({ name: "live-test-b", token_hash: sha256(tokenB) });
 
-for (const path of ["/today", `/day?date=${today}`, "/week", "/exercise-history?exerciseId=clean-strict-press", "/recent-notes"]) {
+const bFind = await call(tokenB, "/exercises");
+check("isolation /exercises: B has no performed exercises", bFind.status === 200 && bFind.body?.data?.exercises?.length === 0);
+for (const path of ["/today", `/day?date=${today}`, "/week", "/exercises?query=clean%20press", "/exercise-history?exerciseId=clean-strict-press", "/recent-notes"]) {
   const r = await call(tokenB, path);
   const raw = JSON.stringify(r.body);
   check(`isolation ${path}: B sees none of A's data`, r.status === 200 && !raw.includes("16 kg felt easy") && !raw.includes("Shoulder felt good") && !raw.includes(sessionId));

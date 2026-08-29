@@ -72,6 +72,8 @@ export interface Exercise {
   purpose: string[];
   watchFor: string[];
   commonMistakes?: string[];
+  /** common alternative names, for exercise discovery/search (e.g. "C&P") */
+  aliases?: string[];
 }
 
 // ---------- Prescriptions (templates) ----------

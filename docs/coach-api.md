@@ -32,8 +32,15 @@ Missing/invalid/revoked token → `401` (with no hint whether an account exists)
 | `/today` | `tz` (optional, default `Asia/Jerusalem`) | Today's session(s) in full detail + daily log |
 | `/day` | `date=YYYY-MM-DD` (required), `tz` | Same shape for any calendar day |
 | `/week` | `date` (any day inside the week, default today), `tz` | Mon–Sun summaries, completion, benchmarks, daily logs, notes |
+| `/exercises` | `query` (optional forgiving name search, max 120 chars), `limit` (default 50, max 100) | Exercise discovery: name → stable id, lastPerformed, sessionsCount, performed flag |
 | `/exercise-history` | `exerciseId` (required, stable slug), `limit` (default 20, max 100) | Past performances incl. timed-block appearances |
 | `/recent-notes` | `limit` (default 20, max 100) | Recent free-text notes with human-readable context |
+
+**ChatGPT integration:** OpenAPI schema for Actions is served at
+`https://soesanair.github.io/lean-and-mean/chatgpt-action-openapi.json`
+(source: `public/chatgpt-action-openapi.json`, validated by
+`tests/openapi-schema.test.ts`). GPT setup: `docs/chatgpt-coach-setup.md`;
+instructions text: `docs/chatgpt-coach-instructions.md`.
 
 Exercise ids are the stable slugs from the exercise library, e.g.
 `clean-strict-press`, `kb-swing`, `goblet-squat`, `one-arm-row`, `horn-curl`,
