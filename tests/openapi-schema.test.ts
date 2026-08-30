@@ -21,9 +21,26 @@ describe("chatgpt-action-openapi.json", () => {
     openapi: string;
     servers: Array<{ url: string }>;
     security?: unknown[];
-    paths: Record<string, Record<string, { operationId?: string; security?: unknown[]; responses: Record<string, unknown> }>>;
-    components: { securitySchemes: Record<string, { type: string; scheme?: string }> };
+    paths: Record<
+      string,
+      Record<
+        string,
+        {
+          operationId?: string;
+          description?: string;
+          security?: unknown[];
+          parameters?: Array<Record<string, unknown>>;
+          responses: Record<string, unknown>;
+        }
+      >
+    >;
+    components: {
+      securitySchemes: Record<string, { type: string; scheme?: string }>;
+      parameters?: Record<string, unknown>;
+    };
   };
+
+  const allOps = Object.values(doc.paths).flatMap((methods) => Object.values(methods));
 
   it("is valid JSON and OpenAPI 3.1", () => {
     expect(doc.openapi).toMatch(/^3\.1\./);
@@ -59,6 +76,52 @@ describe("chatgpt-action-openapi.json", () => {
         expect(op.security).toBeUndefined();
       }
     }
+  });
+
+  // ---- ChatGPT Actions compatibility (import fails otherwise) ----
+
+  it("every operation description is 300 characters or fewer", () => {
+    for (const op of allOps) {
+      expect(op.description, op.operationId).toBeTruthy();
+      expect(op.description!.length, `${op.operationId} description length`).toBeLessThanOrEqual(300);
+    }
+  });
+
+  it("no operation parameter uses $ref — all parameters are inline", () => {
+    for (const op of allOps) {
+      for (const p of op.parameters ?? []) {
+        expect(p.$ref, `${op.operationId} has a $ref parameter`).toBeUndefined();
+      }
+    }
+    // and the reusable-parameters section is gone
+    expect(doc.components.parameters).toBeUndefined();
+    expect(raw).not.toContain("#/components/parameters/");
+  });
+
+  it("every parameter has a string name, in=query, a schema and a description", () => {
+    for (const op of allOps) {
+      for (const p of op.parameters ?? []) {
+        expect(typeof p.name, `${op.operationId} param name`).toBe("string");
+        expect((p.name as string).length).toBeGreaterThan(0);
+        expect(p.in, `${op.operationId} param ${p.name}`).toBe("query");
+        expect(typeof p.required, `${op.operationId} param ${p.name} required`).toBe("boolean");
+        expect(p.schema, `${op.operationId} param ${p.name} schema`).toBeTruthy();
+        expect(typeof p.description).toBe("string");
+      }
+    }
+  });
+
+  it("expected inline parameters exist per operation", () => {
+    const paramsOf = (opId: string) => {
+      const op = allOps.find((o) => o.operationId === opId)!;
+      return (op.parameters ?? []).map((p) => p.name);
+    };
+    expect(paramsOf("getToday")).toEqual(["tz"]);
+    expect(paramsOf("getDay")).toEqual(["date", "tz"]);
+    expect(paramsOf("getWeek")).toEqual(["date", "tz"]);
+    expect(paramsOf("findExercises")).toEqual(["query", "limit"]);
+    expect(paramsOf("getExerciseHistory")).toEqual(["exerciseId", "limit"]);
+    expect(paramsOf("getRecentNotes")).toEqual(["limit"]);
   });
 
   it("every operation documents a 401 response", () => {

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Lean & Mean Coach Read API",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Read-only access to one athlete's Lean & Mean training data: workout sessions (prescription + actual performance), timed-block results, free-text notes and daily metrics. All data belongs to the owner of the bearer token. Finished sessions are immutable historical records. Dates are local training dates (default timezone Asia/Jerusalem)."
   },
   "servers": [
@@ -14,8 +14,16 @@
       "get": {
         "operationId": "getToday",
         "summary": "Today's workout and daily log",
-        "description": "Use for questions about TODAY: 'how did I do today', today's plan, today's notes or metrics. Returns today's session(s) in full detail (per-set actuals, weights, grips, notes, timed-block results) plus today's daily log. Do not use for weekly analysis (use getWeek) or single-exercise progression (use findExercises + getExerciseHistory).",
-        "parameters": [{ "$ref": "#/components/parameters/tz" }],
+        "description": "Today's session(s) in full detail (per-set actuals, weights, grips, notes, timed-block results) plus today's daily log. Use for questions about today. For weekly analysis use getWeek instead.",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "description": "IANA timezone for day boundaries. Default Asia/Jerusalem.",
+            "schema": { "type": "string" }
+          }
+        ],
         "responses": {
           "200": { "$ref": "#/components/responses/DayResponse" },
           "401": { "$ref": "#/components/responses/Unauthorized" }
@@ -26,7 +34,7 @@
       "get": {
         "operationId": "getDay",
         "summary": "One specific calendar day",
-        "description": "Same shape as getToday but for an explicit date (YYYY-MM-DD). Use when the user names a specific day ('last Tuesday', 'the 26th') — compute the date first.",
+        "description": "Same shape as getToday but for an explicit calendar date. Use when the user names a specific day ('last Tuesday', 'the 26th') — compute the YYYY-MM-DD date first.",
         "parameters": [
           {
             "name": "date",
@@ -35,7 +43,13 @@
             "description": "Calendar date, YYYY-MM-DD.",
             "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
           },
-          { "$ref": "#/components/parameters/tz" }
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "description": "IANA timezone for day boundaries. Default Asia/Jerusalem.",
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
           "200": { "$ref": "#/components/responses/DayResponse" },
@@ -48,7 +62,7 @@
       "get": {
         "operationId": "getWeek",
         "summary": "Training week overview (Mon–Sun)",
-        "description": "Use for weekly reviews, consistency and completion questions. Returns per-day session summaries (completion %, difficulty, benchmark results), daily logs, and the week's notes. Fetch details for a specific day with getDay only when needed.",
+        "description": "Mon–Sun week overview: per-day session summaries (completion %, difficulty, benchmark results), daily logs and the week's notes. Use for weekly reviews and consistency questions; drill into getDay only when needed.",
         "parameters": [
           {
             "name": "date",
@@ -57,7 +71,13 @@
             "description": "Any date inside the wanted week (YYYY-MM-DD). Defaults to today.",
             "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
           },
-          { "$ref": "#/components/parameters/tz" }
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "description": "IANA timezone for day boundaries. Default Asia/Jerusalem.",
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
           "200": {
@@ -106,16 +126,22 @@
       "get": {
         "operationId": "findExercises",
         "summary": "Resolve exercise names to stable exercise IDs",
-        "description": "ALWAYS call this first when the user asks about a specific movement and you don't already know its exerciseId. Forgiving search: 'clean press', 'clean & press' and 'C&P' all resolve. Returns stable exerciseId values for getExerciseHistory, plus lastPerformed and sessionsCount. performed=false means the exercise exists in the library but has no recorded history (tell the user that instead of inventing data). Without query: all exercises the user has actually trained.",
+        "description": "Resolve human exercise names to stable exerciseId values for getExerciseHistory. Call this first when a movement's id is unknown; 'clean press' and 'C&P' both match. performed=false means no recorded history — say so instead of inventing data.",
         "parameters": [
           {
             "name": "query",
             "in": "query",
             "required": false,
-            "description": "Human name or fragment, e.g. 'clean press'.",
+            "description": "Human name or fragment, e.g. 'clean press'. Omit to list all trained exercises.",
             "schema": { "type": "string", "maxLength": 120 }
           },
-          { "$ref": "#/components/parameters/limit" }
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max entries (server caps at 100).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
         ],
         "responses": {
           "200": {
@@ -165,7 +191,7 @@
       "get": {
         "operationId": "getExerciseHistory",
         "summary": "Past performances of one exercise",
-        "description": "Use for progression questions about ONE movement, after resolving its exerciseId with findExercises. Entries cover straight sets/circuits (per-set actual reps left/right, weight, grip, notes) AND timed-block appearances (EMOM/AMRAP with the block's single kettlebell weight). Newest first.",
+        "description": "Past performances of one exercise, newest first: straight-set actuals (reps left/right, weight, grip, notes) and timed-block appearances with the block's single kettlebell weight. Resolve exerciseId via findExercises first.",
         "parameters": [
           {
             "name": "exerciseId",
@@ -174,7 +200,13 @@
             "description": "Stable exercise slug from findExercises, e.g. 'clean-strict-press'.",
             "schema": { "type": "string", "pattern": "^[a-z0-9-]{1,60}$" }
           },
-          { "$ref": "#/components/parameters/limit" }
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max entries (server caps at 100).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
         ],
         "responses": {
           "200": {
@@ -244,8 +276,16 @@
       "get": {
         "operationId": "getRecentNotes",
         "summary": "Recent free-text training notes with context",
-        "description": "Use when subjective information matters: pain, fatigue, technique quality, how sets felt, repeated complaints ('what have I been saying about my shoulder'). Each note carries a human-readable context (exercise, set, block or daily log + day). Newest first.",
-        "parameters": [{ "$ref": "#/components/parameters/limit" }],
+        "description": "Recent free-text training notes, newest first, each with human-readable context (exercise, set, block or daily log). Use for subjective info: pain, fatigue, technique quality, repeated complaints.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max notes (server caps at 100). Raise when scanning for a topic.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Notes, newest first.",
@@ -281,22 +321,6 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Lean & Mean personal access token (format lnm_…), created in the app under Progress → Coach API access. Read-only scope."
-      }
-    },
-    "parameters": {
-      "tz": {
-        "name": "tz",
-        "in": "query",
-        "required": false,
-        "description": "IANA timezone for day boundaries. Defaults to Asia/Jerusalem.",
-        "schema": { "type": "string" }
-      },
-      "limit": {
-        "name": "limit",
-        "in": "query",
-        "required": false,
-        "description": "Max entries (server caps at 100).",
-        "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
       }
     },
     "schemas": {
