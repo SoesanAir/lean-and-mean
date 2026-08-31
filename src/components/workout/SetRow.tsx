@@ -98,7 +98,7 @@ export function SetRow({
         </div>
       )}
 
-      <NoteField compact note={set.note} onSave={onNote} placeholder="Add set note…" />
+      <NoteField note={set.note} onSave={onNote} placeholder="Add set note…" />
     </div>
   );
 }

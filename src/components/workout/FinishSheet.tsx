@@ -56,7 +56,10 @@ export function FinishSheet({ onClose, onFinished }: { onClose: () => void; onFi
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" role="dialog" aria-modal="true" aria-label="Finish workout">
-      <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border-t border-line bg-raised p-5 pb-10">
+      <div
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border-t border-line bg-raised p-5"
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 2.5rem)" }}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-2xl font-bold">HOW HARD WAS THIS?</h2>
           <button type="button" onClick={onClose} aria-label="Cancel" className="flex h-11 w-11 items-center justify-center rounded-lg text-mid active:scale-[0.95]">

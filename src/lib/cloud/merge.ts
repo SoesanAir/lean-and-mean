@@ -84,6 +84,8 @@ export function mergeCloud(
   // ---------- completed sessions ----------
   const completed: WorkoutSession[] = [];
   for (const row of cloudSessions) {
+    // locally deleted but the cloud delete hasn't flushed yet — don't resurrect
+    if (nextMeta.pendingDeletes.includes(sessionKey(row.id))) continue;
     if (row.finished_at) {
       // rule 1: finished cloud sessions are canonical
       completed.push(rowToSession(row));
@@ -163,6 +165,7 @@ export function mergeCloud(
   const cloudLogByDate = new Map(cloudLogs.map((r) => [r.date, r]));
   for (const row of cloudLogs) {
     const key = dailyKey(row.date);
+    if (nextMeta.pendingDeletes.includes(key)) continue; // deletion in flight
     const localLog = local.dailyLogs[row.date];
     const lastSeen = nextMeta.remoteUpdatedAt[key];
     const remoteChanged = !lastSeen || row.updated_at > lastSeen;

@@ -5,6 +5,8 @@ installDomShim();
 
 import {
   __resetStoreForTests,
+  deleteCompletedSession,
+  deleteDailyLog,
   finishWorkout,
   getState,
   setSetNote,
@@ -97,6 +99,26 @@ describe("workout resume", () => {
     expect(
       s.activeSession?.sections.find((r) => r.sectionId === "d1-s3")?.exercises?.[0].sets[0].completed,
     ).toBe(true);
+  });
+});
+
+describe("explicit deletion", () => {
+  it("deletes a completed session permanently (survives reload)", () => {
+    startWorkout(1);
+    finishWorkout({ difficulty: "RIGHT", pain: false });
+    const id = getState().completedSessions[0].id;
+    deleteCompletedSession(id);
+
+    __resetStoreForTests();
+    expect(getState().completedSessions.find((s) => s.id === id)).toBeUndefined();
+  });
+
+  it("deletes a daily log permanently (survives reload)", () => {
+    upsertDailyLog("2026-08-30", { weightKg: 82 });
+    deleteDailyLog("2026-08-30");
+
+    __resetStoreForTests();
+    expect(getState().dailyLogs["2026-08-30"]).toBeUndefined();
   });
 });
 

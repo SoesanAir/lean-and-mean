@@ -87,11 +87,11 @@ function detectChanges() {
   }
   for (const key of Object.keys(meta.shadows)) {
     if (!entities.has(key)) {
-      // entity deleted locally; only unfinished sessions are ever deleted
-      // (discarded workouts) — finished history and daily logs never are.
+      // entity deleted locally: discarded active workouts, or explicit
+      // (double-confirmed) deletion of completed sessions / daily logs.
       delete meta.shadows[key];
       delete meta.dirtyAt[key];
-      if (key.startsWith("s:") && meta.remoteUpdatedAt[key]) {
+      if (meta.remoteUpdatedAt[key] && !meta.pendingDeletes.includes(key)) {
         meta.pendingDeletes.push(key);
       }
       delete meta.remoteUpdatedAt[key];
@@ -142,15 +142,17 @@ async function flush(): Promise<void> {
   let needPull = false;
 
   try {
-    // deletions of discarded (unfinished) sessions — never delete finished rows
+    // deletions: discarded actives + explicitly (double-confirmed) deleted
+    // completed sessions and daily logs. Only ever triggered by user actions
+    // in this device's UI; RLS restricts them to the user's own rows.
     for (const key of deletes) {
-      const id = key.slice(2);
-      const { error } = await supabase
-        .from("workout_sessions")
-        .delete()
-        .eq("id", id)
-        .is("finished_at", null);
-      if (error) throw error;
+      if (key.startsWith("s:")) {
+        const { error } = await supabase.from("workout_sessions").delete().eq("id", key.slice(2));
+        if (error) throw error;
+      } else if (key.startsWith("d:")) {
+        const { error } = await supabase.from("daily_logs").delete().eq("date", key.slice(2));
+        if (error) throw error;
+      }
       meta.pendingDeletes = meta.pendingDeletes.filter((k) => k !== key);
     }
 

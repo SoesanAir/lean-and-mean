@@ -153,6 +153,26 @@ describe("mergeCloud — daily logs", () => {
   });
 });
 
+describe("mergeCloud — local deletions in flight", () => {
+  it("does not resurrect a completed session whose cloud delete hasn't flushed", () => {
+    const s = makeSession(1, { finished: true });
+    const meta = emptyMeta();
+    meta.pendingDeletes = [sessionKey(s.id)];
+    // cloud still has the row (delete not flushed yet)
+    const r = mergeCloud(makeState(), meta, [sessionRow(s, T1)], []);
+    expect(r.state.completedSessions).toHaveLength(0);
+    expect(r.pushKeys).toHaveLength(0);
+    expect(r.meta.pendingDeletes).toContain(sessionKey(s.id));
+  });
+
+  it("does not resurrect a daily log whose cloud delete hasn't flushed", () => {
+    const meta = emptyMeta();
+    meta.pendingDeletes = [dailyKey("2026-08-01")];
+    const r = mergeCloud(makeState(), meta, [], [dailyRow("2026-08-01", 82, T1)]);
+    expect(r.state.dailyLogs["2026-08-01"]).toBeUndefined();
+  });
+});
+
 describe("mergeCloud — remote deletions", () => {
   it("drops a previously synced session that disappeared from the cloud", () => {
     const s = makeSession(1, { finished: true });

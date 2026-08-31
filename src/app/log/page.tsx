@@ -12,8 +12,9 @@ import {
   getPhotoUrl,
   listFoodEntries,
 } from "@/lib/food";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { sessionProgress } from "@/lib/session/progress";
-import { setDailyNote, upsertDailyLog } from "@/lib/session/store";
+import { deleteDailyLog, setDailyNote, upsertDailyLog } from "@/lib/session/store";
 import { useAppState } from "@/lib/session/useStore";
 import type { DailyLog, Difficulty1to5, FoodEntry } from "@/lib/types";
 import { cls, todayISO } from "@/lib/util";
@@ -540,10 +541,22 @@ function FoodDay({ date, isToday }: { date: string; isToday: boolean }) {
 export default function LogPage() {
   const state = useAppState();
   const [date, setDate] = useState(todayISO);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const log: DailyLog | undefined = state.dailyLogs[date];
   const isToday = date === todayISO();
   const sessions = state.completedSessions.filter((s) => s.date === date);
+  const logHasData =
+    log !== undefined &&
+    (log.weightKg !== undefined ||
+      log.waistCm !== undefined ||
+      log.steps !== undefined ||
+      log.sleepHours !== undefined ||
+      log.energy !== undefined ||
+      log.soreness !== undefined ||
+      log.proteinG !== undefined ||
+      log.calories !== undefined ||
+      Boolean(log.note?.text));
 
   const chevron =
     "flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface text-hi active:scale-[0.95] disabled:opacity-40";
@@ -605,8 +618,8 @@ export default function LogPage() {
           );
         })}
 
-        {/* remount inputs when the date changes so defaultValue re-reads the log */}
-        <div key={date} className="grid grid-cols-2 gap-3">
+        {/* remount inputs when the date changes or the log is deleted */}
+        <div key={`${date}-${logHasData ? 1 : 0}`} className="grid grid-cols-2 gap-3">
           <NumberField
             id="weight"
             label="Body weight"
@@ -680,8 +693,32 @@ export default function LogPage() {
           </div>
         </Card>
 
+        {logHasData && (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="mx-auto block min-h-11 px-4 text-sm font-semibold text-danger active:opacity-70"
+          >
+            Delete this day&apos;s log…
+          </button>
+        )}
+
         <FoodSection date={date} isToday={isToday} />
       </main>
+
+      {confirmDelete && (
+        <ConfirmSheet
+          title="DELETE THIS DAY'S LOG?"
+          detail={`${formatDate(date)} — weight, waist, steps, sleep, energy, soreness, protein, calories and the daily note will be removed from this device and the cloud. Meals/photos are separate and stay.`}
+          finalWarning="This permanently and irreversibly deletes the daily log entry everywhere. There is no undo."
+          confirmLabel="DELETE"
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            deleteDailyLog(date);
+            setConfirmDelete(false);
+          }}
+        />
+      )}
     </div>
   );
 }

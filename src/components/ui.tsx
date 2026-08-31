@@ -70,7 +70,7 @@ export function GripBadge({ grip, gripNotes }: { grip: GripType; gripNotes?: str
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Grip: ${display}. Tap for definition.`}
-        className="label inline-flex min-h-9 items-center gap-1 rounded-lg border border-line bg-raised px-2.5 text-hi active:scale-[0.97]"
+        className="label inline-flex min-h-11 items-center gap-1 rounded-lg border border-line bg-raised px-2.5 text-hi active:scale-[0.97]"
       >
         GRIP: <span className="text-volt">{display}</span>
       </button>
@@ -83,7 +83,8 @@ export function GripBadge({ grip, gripNotes }: { grip: GripType; gripNotes?: str
           aria-label={`${display} grip definition`}
         >
           <div
-            className="w-full max-w-md rounded-t-2xl border-t border-line bg-raised p-5 pb-10"
+            className="w-full max-w-md rounded-t-2xl border-t border-line bg-raised p-5"
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 2.5rem)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-2 flex items-center justify-between">

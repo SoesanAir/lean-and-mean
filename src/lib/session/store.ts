@@ -309,6 +309,22 @@ export function setDailyNote(date: string, text: string): void {
   });
 }
 
+// ---------------- deletion (explicit, double-confirmed in the UI) ----------------
+
+/** Permanently delete a completed workout (local now; sync propagates to cloud). */
+export function deleteCompletedSession(id: string): void {
+  update((d) => {
+    d.completedSessions = d.completedSessions.filter((s) => s.id !== id);
+  });
+}
+
+/** Permanently delete one day's daily log (local now; sync propagates to cloud). */
+export function deleteDailyLog(date: string): void {
+  update((d) => {
+    delete d.dailyLogs[date];
+  });
+}
+
 // ---------------- cloud sync support ----------------
 
 /**

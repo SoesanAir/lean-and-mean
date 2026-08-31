@@ -83,7 +83,7 @@ export default function TodayPage() {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <div className="flex gap-1.5" role="tablist" aria-label="Week 1 days">
+        <div className="flex gap-0.5" role="tablist" aria-label="Week 1 days">
           {WEEK1.map((d) => (
             <button
               key={d.day}
@@ -96,7 +96,7 @@ export default function TodayPage() {
                 setOpenSection(null);
               }}
               className={cls(
-                "h-8 w-8 rounded-full font-display text-sm font-bold active:scale-[0.9]",
+                "h-9 w-9 rounded-full font-display text-sm font-bold active:scale-[0.9]",
                 d.day === day
                   ? "bg-volt text-onvolt"
                   : active?.day === d.day

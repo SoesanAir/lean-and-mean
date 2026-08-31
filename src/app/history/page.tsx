@@ -1,8 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { deleteCompletedSession } from "@/lib/session/store";
 import { useAppState, useMounted } from "@/lib/session/useStore";
 import { sessionProgress } from "@/lib/session/progress";
 import { EMPHASIS_LABELS, type WorkoutDifficulty } from "@/lib/types";
@@ -40,6 +42,8 @@ function HistoryContent() {
   const id = useSearchParams().get("id");
   const state = useAppState();
   const mounted = useMounted();
+  const router = useRouter();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!mounted) {
     return (
@@ -130,7 +134,35 @@ function HistoryContent() {
         <p className="pb-2 text-center text-xs text-low">
           Prescription snapshot from {new Date(session.startedAt).toLocaleString()} — {EMPHASIS_LABELS[session.snapshot.emphasis]}
         </p>
+
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-danger/40 font-display text-base font-semibold text-danger active:scale-[0.98]"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 6h18" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          </svg>
+          DELETE THIS WORKOUT
+        </button>
       </div>
+
+      {confirmDelete && (
+        <ConfirmSheet
+          title="DELETE THIS WORKOUT?"
+          detail={`Day ${session.day} — ${session.snapshot.name} (${session.date}). All logged sets, results and notes of this session will be removed from this device and the cloud.`}
+          finalWarning="This permanently and irreversibly deletes the workout from your history everywhere. There is no undo."
+          confirmLabel="DELETE"
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            deleteCompletedSession(session.id);
+            setConfirmDelete(false);
+            router.push("/progress");
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -76,7 +76,7 @@ export function FlowCard({
               {readOnly ? (
                 c.note?.text && <p className="text-sm italic text-mid">“{c.note.text}”</p>
               ) : (
-                <NoteField compact note={c.note} onSave={(t) => setCycleNote(section.id, c.index, t)} placeholder="Add note…" />
+                <NoteField note={c.note} onSave={(t) => setCycleNote(section.id, c.index, t)} placeholder="Add note…" />
               )}
             </div>
           ))}

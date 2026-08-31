@@ -14,12 +14,10 @@ export function NoteField({
   note,
   onSave,
   placeholder = "Add note…",
-  compact,
 }: {
   note?: Note;
   onSave: (text: string) => void;
   placeholder?: string;
-  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(note?.text ?? "");
@@ -66,9 +64,8 @@ export function NoteField({
           setOpen(true);
         }}
         className={cls(
-          "flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm active:scale-[0.99]",
+          "flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm active:scale-[0.99]",
           hasNote ? "text-hi" : "text-low",
-          compact && "min-h-9",
         )}
         aria-label={hasNote ? "Edit note" : "Add note"}
       >

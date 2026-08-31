@@ -42,7 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${barlow.variable} ${inter.variable} antialiased`}>
         <AuthGate>
-          <div className="mx-auto min-h-dvh w-full max-w-md pb-24">{children}</div>
+          <div
+            className="mx-auto min-h-dvh w-full max-w-md"
+            style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+          >
+            {children}
+          </div>
           <BottomNav />
           <SyncBadge />
         </AuthGate>

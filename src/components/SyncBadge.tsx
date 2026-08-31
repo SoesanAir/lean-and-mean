@@ -26,11 +26,12 @@ export function SyncBadge() {
       aria-live="polite"
       aria-label={`Sync status: ${l.text}`}
       className={cls(
-        "fixed right-3 z-50 flex min-h-8 items-center gap-1.5 rounded-full border border-line bg-surface/90 px-2.5 text-xs font-semibold backdrop-blur",
+        // bottom-right above the nav: never overlaps the sticky header chips
+        "fixed right-3 z-40 flex min-h-8 items-center gap-1.5 rounded-full border border-line bg-surface/90 px-2.5 text-xs font-semibold backdrop-blur",
         l.tone,
         !clickable && "pointer-events-none",
       )}
-      style={{ top: "max(env(safe-area-inset-top), 10px)" }}
+      style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
     >
       <span className={cls("h-2 w-2 rounded-full", l.dot)} aria-hidden />
       {l.text}

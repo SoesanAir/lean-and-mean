@@ -125,7 +125,7 @@ export function EmomCard({
               {readOnly ? (
                 c.note?.text && <p className="text-sm italic text-mid">“{c.note.text}”</p>
               ) : (
-                <NoteField compact note={c.note} onSave={(t) => setCycleNote(section.id, c.index, t)} placeholder="Add minute note…" />
+                <NoteField note={c.note} onSave={(t) => setCycleNote(section.id, c.index, t)} placeholder="Add minute note…" />
               )}
             </div>
           ))}
