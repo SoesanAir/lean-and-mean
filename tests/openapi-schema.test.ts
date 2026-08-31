@@ -14,6 +14,7 @@ const EXPECTED_OPS = [
   "findExercises",
   "getExerciseHistory",
   "getRecentNotes",
+  "getRecentPhotos",
 ];
 
 describe("chatgpt-action-openapi.json", () => {
@@ -122,6 +123,12 @@ describe("chatgpt-action-openapi.json", () => {
     expect(paramsOf("findExercises")).toEqual(["query", "limit"]);
     expect(paramsOf("getExerciseHistory")).toEqual(["exerciseId", "limit"]);
     expect(paramsOf("getRecentNotes")).toEqual(["limit"]);
+    expect(paramsOf("getRecentPhotos")).toEqual(["date", "type", "limit"]);
+  });
+
+  it("getRecentPhotos documents imageUrl as a short-lived signed URL", () => {
+    expect(raw).toContain("Short-lived signed HTTPS URL");
+    expect(raw).toContain("imageExpiresAt");
   });
 
   it("every operation documents a 401 response", () => {

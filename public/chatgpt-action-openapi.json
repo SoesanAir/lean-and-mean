@@ -272,6 +272,83 @@
         }
       }
     },
+    "/photos": {
+      "get": {
+        "operationId": "getRecentPhotos",
+        "summary": "The user's uploaded food photos (signed URLs)",
+        "description": "Recently uploaded food/meal photos, newest first. Each item includes metadata and imageUrl — a SHORT-LIVED signed HTTPS link (~10 min) to the user's own image. Only claim to see a photo's content if you actually inspected the image itself.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "description": "Only photos from this local date (YYYY-MM-DD).",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Photo type. Only 'food' exists.",
+            "schema": { "type": "string", "enum": ["food"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max photos (default 10, server caps at 50).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Photos, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "imageUrlTtlSeconds": { "type": "integer", "description": "Signed-URL lifetime in seconds." },
+                            "photos": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "date": { "type": "string", "description": "Local date, YYYY-MM-DD." },
+                                  "createdAt": { "type": "string", "format": "date-time" },
+                                  "type": { "type": "string", "enum": ["food"] },
+                                  "description": { "type": "string", "description": "User's own text about the meal." },
+                                  "mealType": { "type": "string" },
+                                  "proteinG": { "type": "integer" },
+                                  "calories": { "type": "integer" },
+                                  "context": { "type": "string" },
+                                  "imageUrl": { "type": "string", "format": "uri", "description": "Short-lived signed HTTPS URL to the user's uploaded image. Expires after ~10 minutes." },
+                                  "imageExpiresAt": { "type": "string", "format": "date-time" }
+                                },
+                                "required": ["id", "date", "createdAt", "type", "imageUrl"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
     "/recent-notes": {
       "get": {
         "operationId": "getRecentNotes",

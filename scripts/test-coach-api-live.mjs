@@ -171,6 +171,40 @@ check("/recent-notes limit=1 respected", n1.body?.data?.notes?.length === 1);
 const nHuge = await call(tokenA, "/recent-notes?limit=99999");
 check("/recent-notes huge limit capped (no error)", nHuge.status === 200 && (nHuge.body?.data?.notes?.length ?? 0) <= 100);
 
+// ---------- API: photos (signed URLs) ----------
+// tiny 1x1 red PNG
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+const photoPath = `${upA.data.user.id}/${randomUUID()}.png`;
+const upPhoto = await A.storage.from("food-photos").upload(photoPath, PNG_BYTES, { contentType: "image/png" });
+check("A: test photo uploaded to private bucket", !upPhoto.error, upPhoto.error?.message);
+const foodIns = await A.from("food_entries").insert({ ts: now, description: "test meal", meal_type: "LUNCH", protein_g: 42, photo_path: photoPath }).select("id").single();
+check("A: food entry with photo inserted", !foodIns.error, foodIns.error?.message);
+
+const ph = await call(tokenA, "/photos");
+const photo = ph.body?.data?.photos?.[0];
+check("/photos → 200 with the photo record", ph.status === 200 && photo?.id === foodIns.data?.id && photo?.type === "food");
+check("/photos includes metadata (description, mealType, protein)", photo?.description === "test meal" && photo?.mealType === "LUNCH" && photo?.proteinG === 42);
+check("/photos imageUrl is HTTPS + has expiry metadata", typeof photo?.imageUrl === "string" && photo.imageUrl.startsWith("https://") && Boolean(photo?.imageExpiresAt) && ph.body?.data?.imageUrlTtlSeconds === 600);
+check("/photos imageUrl does not expose the service key", !ph.body || !JSON.stringify(ph.body).includes(KEY) === true);
+
+const img = await fetch(photo.imageUrl);
+const imgBytes = new Uint8Array(await img.arrayBuffer());
+check("signed URL downloads the exact image (bytes match)", img.status === 200 && imgBytes.length === PNG_BYTES.length && Buffer.compare(Buffer.from(imgBytes), PNG_BYTES) === 0);
+check("signed URL serves image content-type", (img.headers.get("content-type") ?? "").startsWith("image/"));
+
+const publicTry = await fetch(`${URL_}/storage/v1/object/public/food-photos/${photoPath}`);
+check("bucket is NOT public (unsigned access rejected)", publicTry.status >= 400);
+
+check("/photos?date=today includes it", (await call(tokenA, `/photos?date=${today}`)).body?.data?.photos?.length === 1);
+check("/photos?date=2020-01-01 → empty", (await call(tokenA, "/photos?date=2020-01-01")).body?.data?.photos?.length === 0);
+check("/photos?type=food works", (await call(tokenA, "/photos?type=food")).body?.data?.photos?.length === 1);
+check("/photos?type=progress → 400 (only food exists)", (await call(tokenA, "/photos?type=progress")).status === 400);
+check("/photos?date=bad → 400", (await call(tokenA, "/photos?date=31-08-2026")).status === 400);
+check("/photos limit respected", (await call(tokenA, "/photos?limit=1")).body?.data?.photos?.length === 1);
+
 // ---------- API: method / route / auth errors ----------
 check("POST → 405", (await call(tokenA, "/today", "POST")).status === 405);
 check("unknown route → 404", (await call(tokenA, "/everything")).status === 404);
@@ -187,10 +221,12 @@ await B.from("coach_tokens").insert({ name: "live-test-b", token_hash: sha256(to
 
 const bFind = await call(tokenB, "/exercises");
 check("isolation /exercises: B has no performed exercises", bFind.status === 200 && bFind.body?.data?.exercises?.length === 0);
-for (const path of ["/today", `/day?date=${today}`, "/week", "/exercises?query=clean%20press", "/exercise-history?exerciseId=clean-strict-press", "/recent-notes"]) {
+const bPhotos = await call(tokenB, "/photos");
+check("isolation /photos: B sees zero photos (cannot infer A's exist)", bPhotos.status === 200 && bPhotos.body?.data?.photos?.length === 0);
+for (const path of ["/today", `/day?date=${today}`, "/week", "/exercises?query=clean%20press", "/exercise-history?exerciseId=clean-strict-press", "/recent-notes", "/photos"]) {
   const r = await call(tokenB, path);
   const raw = JSON.stringify(r.body);
-  check(`isolation ${path}: B sees none of A's data`, r.status === 200 && !raw.includes("16 kg felt easy") && !raw.includes("Shoulder felt good") && !raw.includes(sessionId));
+  check(`isolation ${path}: B sees none of A's data`, r.status === 200 && !raw.includes("16 kg felt easy") && !raw.includes("Shoulder felt good") && !raw.includes(sessionId) && !raw.includes(photoPath));
 }
 
 // ---------- last_used_at + revocation ----------
@@ -200,11 +236,13 @@ await A.from("coach_tokens").update({ revoked_at: new Date().toISOString() }).eq
 check("revoked token → 401", (await call(tokenA, "/today")).status === 401);
 
 // ---------- cleanup ----------
+const c0 = await A.storage.from("food-photos").remove([photoPath]);
 const c1 = await A.from("workout_sessions").delete().eq("user_id", upA.data.user.id);
 const c2 = await A.from("daily_logs").delete().eq("user_id", upA.data.user.id);
+const c2b = await A.from("food_entries").delete().eq("user_id", upA.data.user.id);
 const c3 = await A.from("coach_tokens").delete().eq("user_id", upA.data.user.id);
 const c4 = await B.from("coach_tokens").delete().eq("user_id", upB.data.user.id);
-check("cleanup complete", ![c1, c2, c3, c4].some((r) => r.error));
+check("cleanup complete (incl. storage object)", ![c0, c1, c2, c2b, c3, c4].some((r) => r.error));
 await A.auth.signOut(); await B.auth.signOut();
 
 console.log(`\n${passed} passed, ${failed} failed`);

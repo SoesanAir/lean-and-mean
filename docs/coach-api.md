@@ -35,6 +35,7 @@ Missing/invalid/revoked token → `401` (with no hint whether an account exists)
 | `/exercises` | `query` (optional forgiving name search, max 120 chars), `limit` (default 50, max 100) | Exercise discovery: name → stable id, lastPerformed, sessionsCount, performed flag |
 | `/exercise-history` | `exerciseId` (required, stable slug), `limit` (default 20, max 100) | Past performances incl. timed-block appearances |
 | `/recent-notes` | `limit` (default 20, max 100) | Recent free-text notes with human-readable context |
+| `/photos` | `date` (optional), `type` (only `food`), `limit` (default 10, max 50) | Food photo metadata + **short-lived signed image URLs** (10 min TTL); bucket stays private |
 
 **ChatGPT integration:** OpenAPI schema for Actions is served at
 `https://soesanair.github.io/lean-and-mean/chatgpt-action-openapi.json`

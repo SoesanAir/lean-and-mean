@@ -14,6 +14,7 @@
 //   /coach-read/exercises[?query=clean+press][&limit=50]   (name → stable id)
 //   /coach-read/exercise-history?exerciseId=<id>[&limit=20]
 //   /coach-read/recent-notes[?limit=20]
+//   /coach-read/photos[?date=YYYY-MM-DD][&type=food][&limit=10]  (short-lived signed URLs)
 //
 // Data interpretation is shared with the app via ../../src/lib (bundled):
 // sessions are read from their immutable prescription_snapshot + performance.
@@ -167,6 +168,70 @@ async function logsWhere(userId: string, filter: string, limit: number): Promise
   );
 }
 
+// ---------- photos (signed URLs, short-lived) ----------
+
+const PHOTO_URL_TTL_SEC = 600; // 10 minutes
+const MAX_PHOTO_LIMIT = 50;
+
+interface FoodEntryRow {
+  id: string;
+  ts: string;
+  description: string | null;
+  protein_g: number | null;
+  calories: number | null;
+  meal_type: string | null;
+  photo_path: string | null;
+}
+
+async function signPhotoUrl(path: string): Promise<string | null> {
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/food-photos/${path}`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ expiresIn: PHOTO_URL_TTL_SEC }),
+  });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { signedURL?: string };
+  return j.signedURL ? `${SUPABASE_URL}/storage/v1${j.signedURL}` : null;
+}
+
+async function handlePhotos(userId: string, date: string | null, limit: number, tz: string) {
+  const rows = await rest<FoodEntryRow[]>(
+    `food_entries?user_id=eq.${userId}&photo_path=not.is.null&select=id,ts,description,protein_g,calories,meal_type,photo_path&order=ts.desc&limit=200`,
+  );
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
+
+  const photos = [];
+  for (const row of rows) {
+    // defense in depth: rows are already user-scoped, but never sign a path
+    // outside the resolved user's own storage folder
+    if (!row.photo_path || !row.photo_path.startsWith(`${userId}/`)) continue;
+    const localDate = fmt.format(new Date(row.ts));
+    if (date && localDate !== date) continue;
+    if (photos.length >= limit) break;
+    const imageUrl = await signPhotoUrl(row.photo_path);
+    if (!imageUrl) continue;
+    photos.push({
+      id: row.id,
+      date: localDate,
+      createdAt: row.ts,
+      type: "food" as const,
+      description: row.description ?? undefined,
+      mealType: row.meal_type ?? undefined,
+      proteinG: row.protein_g ?? undefined,
+      calories: row.calories ?? undefined,
+      context:
+        [row.meal_type, row.description].filter(Boolean).join(" — ") || "food photo (no description)",
+      imageUrl,
+      imageExpiresAt: new Date(Date.now() + PHOTO_URL_TTL_SEC * 1000).toISOString(),
+    });
+  }
+  return ok({ photos, imageUrlTtlSeconds: PHOTO_URL_TTL_SEC });
+}
+
 // ---------- route handlers ----------
 
 async function handleDay(userId: string, date: string) {
@@ -270,8 +335,20 @@ Deno.serve(async (req: Request) => {
       }
       case "/recent-notes":
         return await handleRecentNotes(userId, parseLimit(url, 20));
+      case "/photos": {
+        const type = url.searchParams.get("type");
+        if (type !== null && type !== "food") {
+          return fail(400, "bad_request", "Only type=food exists.");
+        }
+        const date = url.searchParams.get("date");
+        if (date !== null && !DATE_RE.test(date)) {
+          return fail(400, "bad_request", "date must be YYYY-MM-DD.");
+        }
+        const limit = Math.min(parseLimit(url, 10), MAX_PHOTO_LIMIT);
+        return await handlePhotos(userId, date, limit, tz);
+      }
       default:
-        return fail(404, "not_found", "Routes: /today /day /week /exercises /exercise-history /recent-notes");
+        return fail(404, "not_found", "Routes: /today /day /week /exercises /exercise-history /recent-notes /photos");
     }
   } catch {
     // never leak internal DB errors to callers
