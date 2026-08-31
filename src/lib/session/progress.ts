@@ -1,4 +1,4 @@
-import type { SectionResult, WorkoutSession } from "../types";
+import type { SectionResult, WorkoutSession } from "../types.ts";
 
 export interface ProgressInfo {
   done: number;
@@ -41,4 +41,19 @@ export function sessionProgress(session: WorkoutSession): ProgressInfo {
 export function sectionProgress(r: SectionResult): ProgressInfo {
   const { done, total } = sectionUnits(r);
   return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) };
+}
+
+/**
+ * Which program day the Today screen should open on: the first day (1–7)
+ * without a completed session. When days 1–6 are all done it lands on 7
+ * (rest); once the whole cycle is exhausted it continues after the most
+ * recently completed day.
+ */
+export function nextProgramDay(completedSessions: WorkoutSession[]): number {
+  const done = new Set(completedSessions.map((s) => s.day));
+  for (let d = 1; d <= 7; d++) {
+    if (!done.has(d)) return d;
+  }
+  const latest = completedSessions[0]; // newest first
+  return latest ? (latest.day % 7) + 1 : 1;
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAppState, useMounted } from "@/lib/session/useStore";
 import { getDayTemplate, WEEK1 } from "@/lib/seed/week1";
 import { buildSession } from "@/lib/session/snapshot";
-import { sessionProgress } from "@/lib/session/progress";
+import { nextProgramDay, sessionProgress } from "@/lib/session/progress";
 import { discardActiveWorkout, setDayQuote, setSessionQuote, startWorkout } from "@/lib/session/store";
 import { todayISO } from "@/lib/util";
 import { cls } from "@/lib/util";
@@ -14,11 +14,6 @@ import { SectionCard } from "@/components/workout/SectionCard";
 import { FinishSheet } from "@/components/workout/FinishSheet";
 import { Card } from "@/components/ui";
 
-/** Monday = Day 1 … Sunday = Day 7 */
-function defaultDayForToday(): number {
-  const js = new Date().getDay(); // 0 = Sunday
-  return js === 0 ? 7 : js;
-}
 
 export default function TodayPage() {
   const state = useAppState();
@@ -32,7 +27,8 @@ export default function TodayPage() {
   // device clock, so skip SSR HTML to avoid hydration mismatches
   const mounted = useMounted();
 
-  const day = selectedDay ?? active?.day ?? (mounted ? defaultDayForToday() : 1);
+  // default: resume the active workout's day, else the first not-yet-completed day
+  const day = selectedDay ?? active?.day ?? (mounted ? nextProgramDay(state.completedSessions) : 1);
   const template = getDayTemplate(day);
   const isLive = active !== null && active.day === day;
 

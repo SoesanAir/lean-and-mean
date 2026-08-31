@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildSession } from "@/lib/session/snapshot";
 import { getDayTemplate } from "@/lib/seed/week1";
-import { sessionProgress } from "@/lib/session/progress";
+import { nextProgramDay, sessionProgress } from "@/lib/session/progress";
 import { elapsedMs } from "@/lib/session/timer";
 import type { TimerState } from "@/lib/types";
 
@@ -30,6 +30,35 @@ describe("session progress", () => {
     });
     const before = sessionProgress(session);
     expect(before.done).toBe(2);
+  });
+});
+
+describe("nextProgramDay", () => {
+  const done = (day: number, date: string) => {
+    const s = buildSession(getDayTemplate(day), date);
+    s.finishedAt = `${date}T10:00:00.000Z`;
+    return s;
+  };
+
+  it("starts at day 1 with no history", () => {
+    expect(nextProgramDay([])).toBe(1);
+  });
+
+  it("returns the first day without a completed session", () => {
+    expect(nextProgramDay([done(1, "2026-08-25")])).toBe(2);
+    // skipped day 2 → it stays next even after doing day 3
+    expect(nextProgramDay([done(3, "2026-08-27"), done(1, "2026-08-25")])).toBe(2);
+    expect(
+      nextProgramDay([done(5, "2026-08-29"), done(4, "2026-08-28"), done(3, "2026-08-27"), done(2, "2026-08-26"), done(1, "2026-08-25")]),
+    ).toBe(6);
+  });
+
+  it("lands on the rest day when 1–6 are done, then cycles after the newest", () => {
+    const week = [6, 5, 4, 3, 2, 1].map((d, i) => done(d, `2026-08-2${6 - i + 3}`));
+    expect(nextProgramDay(week)).toBe(7);
+    // whole cycle incl. 7 done (hypothetically) → continue after most recent
+    const all = [done(7, "2026-08-30"), ...week];
+    expect(nextProgramDay(all)).toBe(1);
   });
 });
 
