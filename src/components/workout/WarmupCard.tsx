@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import type { WarmupResult, WarmupSection } from "@/lib/types";
 import { WARMUP_MOVEMENTS_BY_ID } from "@/lib/seed/warmups";
 import { setWarmupNote, updateTimer, updateWarmup } from "@/lib/session/store";
-import { elapsedSec, timerStart, useTicker } from "@/lib/session/timer";
+import { useTicker } from "@/lib/session/timer";
+import { planStatus } from "@/lib/timing/engine";
+import { warmupPlan } from "@/lib/timing/builders";
 import { InfoButton, InfoSheet, type MovementInfo } from "@/components/InfoSheet";
 import { NoteField } from "@/components/NoteField";
-import { cls } from "@/lib/util";
+import { TimerPlanPlayer } from "./TimerPlanPlayer";
 
 function movementInfo(movementId: string): MovementInfo {
   const m = WARMUP_MOVEMENTS_BY_ID[movementId];
@@ -23,8 +25,9 @@ function movementInfo(movementId: string): MovementInfo {
 }
 
 /**
- * Free Movement warm-up player: ~30 s per movement, auto-advances, no set
- * rest. The "i" sheet never interrupts the timer.
+ * Free Movement warm-up: one TimerPlan drives the whole flow (the engine
+ * advances by time; Skip is the manual advance). The "i" sheet never
+ * interrupts the timer.
  */
 export function WarmupCard({
   section,
@@ -36,41 +39,30 @@ export function WarmupCard({
   readOnly?: boolean;
 }) {
   const [info, setInfo] = useState<string | null>(null);
-  const running = result.timer.status === "running";
-  useTicker(running);
+  // keep the derived movement index fresh while the plan runs (the player
+  // ticks itself; this card needs its own ticks for the info buttons + sync)
+  useTicker(result.timer.status === "running");
 
   const total = section.movements.length;
-  const idx = Math.min(result.currentIndex, total - 1);
-  const current = section.movements[idx];
-  const next = section.movements[idx + 1];
-  const segElapsed = elapsedSec(result.timer);
-  const segRemaining = Math.max(0, current.durationSeconds - segElapsed);
-  const done = result.completed;
+  const plan = warmupPlan(section);
+  const snap = planStatus(plan, result.timer);
+  const finished = snap.state === "FINISHED" || result.completed;
 
-  const advance = (from: number) => {
-    if (from + 1 >= total) {
-      updateWarmup(section.id, {
-        completed: true,
-        movementsDone: total,
-        currentIndex: total - 1,
-        timer: { status: "finished", elapsedBeforePauseMs: 0 },
-      });
-    } else {
-      updateWarmup(section.id, {
-        currentIndex: from + 1,
-        movementsDone: from + 1,
-        // auto-start the next movement's segment
-        timer: { status: "running", startedAt: Date.now(), elapsedBeforePauseMs: 0 },
-      });
-    }
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(30);
-  };
+  // rounds are 1-based per movement; COUNTDOWN/READY have no round → index 0 ("up next")
+  const currentIdx = snap.phase?.round ? snap.phase.round - 1 : 0;
+  const nextIdx = snap.nextPhase?.round !== undefined ? snap.nextPhase.round - 1 : null;
 
-  // auto-advance when the segment ends
+  const currentMovement = !finished ? section.movements[currentIdx] : undefined;
+  const nextMovement =
+    !finished && nextIdx !== null && nextIdx !== currentIdx ? section.movements[nextIdx] : undefined;
+
+  // sync derived progress into the persisted result (store writes, not setState)
   useEffect(() => {
-    if (!readOnly && running && segRemaining === 0 && !done) advance(idx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, segRemaining, idx, done, readOnly]);
+    if (readOnly || finished) return; // finished values are written by onFinished
+    if (result.currentIndex !== currentIdx || result.movementsDone !== currentIdx) {
+      updateWarmup(section.id, { currentIndex: currentIdx, movementsDone: currentIdx });
+    }
+  }, [readOnly, finished, result.currentIndex, result.movementsDone, currentIdx, section.id]);
 
   if (readOnly) {
     return (
@@ -92,76 +84,46 @@ export function WarmupCard({
 
   return (
     <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
-      <div className="flex items-baseline justify-between">
-        <p className="label">
-          {section.targetMinutes} MIN · MOVEMENT {Math.min(idx + 1, total)}/{total}
-        </p>
-        <span className="font-display text-lg font-bold text-volt tnum">
-          {done ? "DONE" : `${segRemaining}s`}
-        </span>
-      </div>
+      <p className="label">{section.targetMinutes} MIN</p>
       {section.intro && <p className="text-sm text-mid">{section.intro}</p>}
 
-      {done ? (
-        <p className="rounded-xl border border-volt/40 bg-volt/10 px-3 py-3 text-center font-display text-xl font-bold text-volt">
-          WARM-UP COMPLETE
-        </p>
-      ) : (
-        <>
-          {/* current movement */}
-          <div className="rounded-2xl border border-volt/40 bg-raised p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-display text-2xl font-bold leading-tight">
-                  {WARMUP_MOVEMENTS_BY_ID[current.movementId]?.name ?? current.movementId}
-                </p>
-                <p className="mt-0.5 text-sm text-mid">
-                  {WARMUP_MOVEMENTS_BY_ID[current.movementId]?.shortCue}
-                </p>
-              </div>
-              <InfoButton onOpen={() => setInfo(current.movementId)} label="current movement" />
-            </div>
-            {/* segment progress */}
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface">
-              <div
-                className="h-full rounded-full bg-volt transition-[width] duration-300"
-                style={{ width: `${Math.min(100, (segElapsed / current.durationSeconds) * 100)}%` }}
-              />
-            </div>
-          </div>
+      <TimerPlanPlayer
+        plan={plan}
+        timer={result.timer}
+        onPatch={(p) => updateTimer(section.id, "warmup", p)}
+        onFinished={() =>
+          updateWarmup(section.id, {
+            completed: true,
+            movementsDone: section.movements.length,
+            currentIndex: section.movements.length - 1,
+          })
+        }
+        allowSkip
+        startLabel="START WARM-UP"
+      />
 
-          {/* next up */}
-          {next && (
-            <div className="flex items-center justify-between gap-2 px-1">
-              <p className="text-sm text-low">
-                Next: <span className="text-mid">{WARMUP_MOVEMENTS_BY_ID[next.movementId]?.name ?? next.movementId}</span>
-              </p>
-              <InfoButton onOpen={() => setInfo(next.movementId)} label="next movement" />
+      {/* how-to sheets for the current + next movement, without touching the timer */}
+      {(currentMovement || nextMovement) && (
+        <div className="flex items-center justify-between gap-2 px-1">
+          {currentMovement && (
+            <div className="flex items-center gap-1">
+              <InfoButton
+                onOpen={() => setInfo(currentMovement.movementId)}
+                label={`current movement — ${WARMUP_MOVEMENTS_BY_ID[currentMovement.movementId]?.name ?? currentMovement.movementId}`}
+              />
+              <span className="text-sm text-low">{snap.state === "READY" || snap.state === "COUNTDOWN" ? "Up next" : "Current"}</span>
             </div>
           )}
-
-          <div className="flex gap-2">
-            {result.timer.status === "idle" ? (
-              <button
-                type="button"
-                onClick={() => updateTimer(section.id, "warmup", timerStart(result.timer))}
-                className="h-13 min-h-12 flex-1 rounded-xl bg-volt font-display text-lg font-bold text-onvolt active:scale-[0.98]"
-              >
-                START WARM-UP
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => advance(idx)}
-                className={cls(
-                  "h-13 min-h-12 flex-1 rounded-xl border border-line bg-raised font-display text-base font-semibold text-hi active:scale-[0.98]",
-                )}
-              >
-                {idx + 1 >= total ? "FINISH WARM-UP" : "NEXT MOVEMENT"}
-              </button>
-            )}
-          </div>
-        </>
+          {nextMovement && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-low">Next</span>
+              <InfoButton
+                onOpen={() => setInfo(nextMovement.movementId)}
+                label={`next movement — ${WARMUP_MOVEMENTS_BY_ID[nextMovement.movementId]?.name ?? nextMovement.movementId}`}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       <div className="border-t border-line pt-1">

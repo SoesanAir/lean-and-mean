@@ -5,9 +5,10 @@ import { getExercise } from "@/lib/seed/exercises";
 import { BlockWeightBanner, CueList, Disclosure, GripBadge, Stepper } from "@/components/ui";
 import { NoteField } from "@/components/NoteField";
 import { setTimedBlockNote, updateTimedBlock, updateTimer } from "@/lib/session/store";
+import { amrapPlan } from "@/lib/timing/builders";
 import { cls } from "@/lib/util";
 import { movementLabel } from "./format";
-import { TimerBar } from "./TimerBar";
+import { TimerPlanPlayer } from "./TimerPlanPlayer";
 
 export function AmrapCard({
   section,
@@ -69,11 +70,12 @@ export function AmrapCard({
       </div>
 
       {!readOnly && (
-        <TimerBar
+        <TimerPlanPlayer
+          plan={amrapPlan(section)}
           timer={result.timer}
-          totalSec={section.minutes * 60}
-          onPatch={(patch) => updateTimer(section.id, "timedBlock", patch)}
+          onPatch={(p) => updateTimer(section.id, "timedBlock", p)}
           onFinished={() => updateTimedBlock(section.id, { completed: true })}
+          allowSkip={false}
         />
       )}
 

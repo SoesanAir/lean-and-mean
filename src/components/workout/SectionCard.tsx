@@ -4,8 +4,9 @@ import type { IntervalSection, SectionResult, WorkoutSection } from "@/lib/types
 import { getExercise } from "@/lib/seed/exercises";
 import { EmphasisBadge } from "@/components/ui";
 import { NoteField } from "@/components/NoteField";
-import { setSectionNote, setSetNote, updateSetResult } from "@/lib/session/store";
+import { setSectionNote, setSetNote, updateSectionTimer, updateSetResult } from "@/lib/session/store";
 import { sectionProgress } from "@/lib/session/progress";
+import { intervalPlan } from "@/lib/timing/builders";
 import { cls } from "@/lib/util";
 import { ExerciseCard } from "./ExerciseCard";
 import { SkillCard } from "./SkillCard";
@@ -15,6 +16,7 @@ import { EmomCard } from "./EmomCard";
 import { AmrapCard } from "./AmrapCard";
 import { FlowCard } from "./FlowCard";
 import { SetRow } from "./SetRow";
+import { TimerPlanPlayer } from "./TimerPlanPlayer";
 
 /** Accordion section: collapsed = title + progress; expanded = full content. */
 export function SectionCard({
@@ -190,6 +192,16 @@ function IntervalBody({
         {section.rounds} × {section.workSec} sec <span className="text-mid">/ {section.restSec} sec rest</span>
       </p>
       {section.effort && <p className="text-sm text-med">{section.effort}</p>}
+      {!readOnly && (
+        <div className="mt-3">
+          <TimerPlanPlayer
+            plan={intervalPlan(section)}
+            timer={result.sectionTimer ?? { status: "idle", elapsedBeforePauseMs: 0 }}
+            onPatch={(p) => updateSectionTimer(section.id, p)}
+            allowSkip
+          />
+        </div>
+      )}
       <div className="mt-3">
         {er.sets.map((set, i) =>
           readOnly ? (

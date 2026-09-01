@@ -5,9 +5,9 @@ import { getExercise } from "@/lib/seed/exercises";
 import { BlockWeightBanner, CheckCircle, CueList, Disclosure, GripBadge } from "@/components/ui";
 import { NoteField } from "@/components/NoteField";
 import { completeAllCycles, setCycleNote, setTimedBlockNote, updateCycle, updateTimedBlock, updateTimer } from "@/lib/session/store";
-import { elapsedSec, useTicker } from "@/lib/session/timer";
+import { emomPlan } from "@/lib/timing/builders";
 import { movementLabel } from "./format";
-import { TimerBar } from "./TimerBar";
+import { TimerPlanPlayer } from "./TimerPlanPlayer";
 
 export function EmomCard({
   section,
@@ -18,16 +18,6 @@ export function EmomCard({
   result: TimedBlockResult;
   readOnly?: boolean;
 }) {
-  useTicker(result.timer.status === "running");
-  const elapsed = elapsedSec(result.timer);
-  const running = result.timer.status === "running";
-  const minuteIdx = Math.min(section.minutes - 1, Math.floor(elapsed / 60));
-  const secInMinute = elapsed % 60;
-  const current = section.pattern[minuteIdx % section.pattern.length];
-  const next = section.pattern[(minuteIdx + 1) % section.pattern.length];
-  const cycleNo = Math.floor(minuteIdx / section.pattern.length) + 1;
-  const totalCycles = Math.ceil(section.minutes / section.pattern.length);
-
   const doneMinutes = result.cycles.filter((c) => c.completed).length;
 
   return (
@@ -44,46 +34,18 @@ export function EmomCard({
       {section.intro && <p className="text-sm text-mid">{section.intro}</p>}
 
       {!readOnly && (
-        <>
-          <TimerBar
-            timer={result.timer}
-            totalSec={section.minutes * 60}
-            onPatch={(patch) => updateTimer(section.id, "timedBlock", patch)}
-            onFinished={() =>
-              updateTimedBlock(section.id, {
-                completed: true,
-                completedMinutes: result.completedMinutes ?? doneMinutes,
-              })
-            }
-          />
-
-          {/* EMOM cockpit display (spec §26) */}
-          {running && (
-            <div className="rounded-2xl border border-volt/40 bg-raised p-4 text-center">
-              <p className="label text-volt">
-                MINUTE {minuteIdx + 1} / {section.minutes}
-                {section.pattern.length > 1 && ` · CYCLE ${cycleNo} / ${totalCycles}`}
-              </p>
-              <p className="mt-1 font-display text-3xl font-bold leading-tight">
-                {(current.displayName ?? getExercise(current.exerciseId).name).toUpperCase()}
-              </p>
-              <p className="mt-1 font-display text-2xl font-semibold text-hi tnum">
-                {movementLabel(current)} REPS
-                {section.blockWeightKg !== null && !current.bodyweight && (
-                  <span className="text-volt"> · {section.blockWeightKg} KG</span>
-                )}
-              </p>
-              <div className="mt-2 flex justify-center">
-                <GripBadge grip={current.grip} gripNotes={current.gripNotes} />
-              </div>
-              {secInMinute >= 50 && section.pattern.length > 1 && (
-                <p className="mt-2 text-sm text-med" aria-live="polite">
-                  NEXT: {(next.displayName ?? getExercise(next.exerciseId).name).toUpperCase()}
-                </p>
-              )}
-            </div>
-          )}
-        </>
+        <TimerPlanPlayer
+          plan={emomPlan(section)}
+          timer={result.timer}
+          onPatch={(p) => updateTimer(section.id, "timedBlock", p)}
+          onFinished={() =>
+            updateTimedBlock(section.id, {
+              completed: true,
+              completedMinutes: result.completedMinutes ?? doneMinutes,
+            })
+          }
+          allowSkip
+        />
       )}
 
       {/* movement reference + cues */}

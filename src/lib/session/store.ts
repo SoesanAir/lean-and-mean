@@ -297,6 +297,15 @@ export function updateTimer(
   );
 }
 
+/** timer for INTERVAL sections (created lazily for pre-feature sessions) */
+export function updateSectionTimer(sectionId: string, patch: Partial<TimerState>): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      r.sectionTimer = { status: "idle", elapsedBeforePauseMs: 0, ...r.sectionTimer, ...patch };
+    }),
+  );
+}
+
 // ---------------- warm-up ----------------
 
 export function updateWarmup(sectionId: string, patch: Partial<WarmupResult>): void {
@@ -382,6 +391,8 @@ export function scaleSkill(sectionId: string, direction: "up" | "down"): void {
       completed: false,
     }));
     result.completed = false;
+    // a different variation means a different hold plan — reset the guided timer
+    result.timer = { status: "idle", elapsedBeforePauseMs: 0 };
   });
 }
 

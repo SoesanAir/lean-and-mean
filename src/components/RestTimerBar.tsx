@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { adjustRest, restRemainingSec, skipRest, useRestTimer } from "@/lib/session/restTimer";
 import { useTicker } from "@/lib/session/timer";
+import { playCue } from "@/lib/timing/audio";
 import { cls, formatClock } from "@/lib/util";
 
 /**
@@ -18,12 +19,30 @@ export function RestTimerBar() {
   const remaining = timer ? restRemainingSec(timer) : 0;
   const atZero = timer !== null && remaining === 0;
 
+  // countdown beeps at the real 3-2-1 boundaries (previous remaining in a ref)
+  const prev = useRef<{ key: string; remaining: number } | null>(null);
+  useEffect(() => {
+    if (!timer) {
+      prev.current = null;
+      return;
+    }
+    const last = prev.current;
+    prev.current = { key: timer.key, remaining };
+    if (!last || last.key !== timer.key || remaining >= last.remaining) return;
+    if (
+      remaining > 0 &&
+      ((last.remaining > 3 && remaining <= 3) ||
+        (last.remaining > 2 && remaining <= 2) ||
+        (last.remaining > 1 && remaining <= 1))
+    ) {
+      playCue("beep");
+    }
+  });
+
   useEffect(() => {
     if (atZero && timer && notified.current !== timer.key) {
       notified.current = timer.key;
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate?.([120, 80, 120]);
-      }
+      playCue("go"); // audio + haptics in one place
       const t = setTimeout(() => skipRest(), 4000); // auto-dismiss after the "GO" moment
       return () => clearTimeout(t);
     }

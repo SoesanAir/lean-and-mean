@@ -8,6 +8,7 @@ import { SetRow } from "./SetRow";
 import { prescriptionLabel } from "./format";
 import { planRestAfterSet } from "@/lib/session/restLogic";
 import { startRest } from "@/lib/session/restTimer";
+import { armAudio } from "@/lib/timing/audio";
 import {
   setExerciseNote,
   setSetNote,
@@ -102,6 +103,7 @@ export function ExerciseCard({
                     i,
                   );
                   if (plan) {
+                    armAudio(); // the set-completion tap unlocks cue audio
                     startRest(
                       `${sectionId}/${p.id}/${i}`,
                       `Set ${plan.nextSetIndex + 1} — ${name}`,

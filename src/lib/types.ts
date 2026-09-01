@@ -152,6 +152,8 @@ export interface CircuitSection extends SectionBase {
 export interface EmomSection extends SectionBase {
   type: "EMOM";
   minutes: number;
+  /** interval length in seconds — 60 = EMOM, 120 = E2MOM… (default 60) */
+  intervalSec?: number;
   /** ONE weight for the whole block (null = pure bodyweight block) */
   blockWeightKg: number | null;
   /** repeats every `pattern.length` minutes */
@@ -247,6 +249,8 @@ export interface SkillPrescription {
   holdSec?: number;
   attempts?: number;
   perSide?: boolean;
+  /** rest between timed holds (guided hold timer); default 45 s */
+  restSec?: number;
 }
 
 export interface SkillVariation {
@@ -383,6 +387,12 @@ export interface TimerState {
   startedAt?: number;
   /** accumulated elapsed ms from previous run segments */
   elapsedBeforePauseMs: number;
+  /**
+   * logical-time offset from manual Skip / ±time adjustments against a
+   * TimerPlan. Displayed state is always derived from wall-clock elapsed +
+   * this skew, so backgrounding across phases stays accurate.
+   */
+  skewMs?: number;
 }
 
 export interface TimedBlockResult {
@@ -418,6 +428,8 @@ export interface SectionResult {
   warmup?: WarmupResult;
   /** SKILL_PRACTICE (progression-based) */
   skillPractice?: SkillPracticeResult;
+  /** guided section timer for INTERVAL sections (TimerPlan-driven) */
+  sectionTimer?: TimerState;
   note?: Note;
 }
 

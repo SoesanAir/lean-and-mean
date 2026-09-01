@@ -45,6 +45,7 @@ function emptySectionResult(section: WorkoutSection): SectionResult {
     case "INTERVAL":
       return {
         sectionId: section.id,
+        sectionTimer: idleTimer(),
         exercises: [
           emptyExerciseResult(
             {
