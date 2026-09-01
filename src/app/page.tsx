@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAppState, useMounted } from "@/lib/session/useStore";
 import { getDayTemplate, WEEK1 } from "@/lib/seed/week1";
 import { buildSession } from "@/lib/session/snapshot";
-import { nextProgramDay, sessionProgress } from "@/lib/session/progress";
+import { nextProgramDay, sectionProgress, sessionProgress } from "@/lib/session/progress";
 import { discardActiveWorkout, setDayQuote, setSessionQuote, startWorkout } from "@/lib/session/store";
 import { todayISO } from "@/lib/util";
 import { cls } from "@/lib/util";
@@ -43,18 +43,11 @@ export default function TodayPage() {
 
   const firstIncomplete = useMemo(() => {
     for (const r of session.sections) {
-      const s = template.sections.find((x) => x.id === r.sectionId);
-      if (!s) continue;
-      const done =
-        (r.skill && r.skill.completed) ||
-        (r.timedBlock && r.timedBlock.cycles.length > 0
-          ? r.timedBlock!.cycles.every((c) => c.completed)
-          : r.timedBlock?.completed) ||
-        (r.exercises && r.exercises.every((e) => e.sets.every((x) => x.completed || x.skipped)));
-      if (!done) return r.sectionId;
+      const prog = sectionProgress(r);
+      if (prog.total > 0 && prog.done < prog.total) return r.sectionId;
     }
     return null;
-  }, [session, template]);
+  }, [session]);
 
   const open = openSection ?? firstIncomplete;
 

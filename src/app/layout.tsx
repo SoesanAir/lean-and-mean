@@ -3,6 +3,7 @@ import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthGate } from "@/components/AuthGate";
+import { RestTimerBar } from "@/components/RestTimerBar";
 import { SyncBadge } from "@/components/SyncBadge";
 
 const barlow = Barlow_Condensed({
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
           <BottomNav />
+          <RestTimerBar />
           <SyncBadge />
         </AuthGate>
       </body>

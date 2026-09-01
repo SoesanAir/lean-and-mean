@@ -6,6 +6,8 @@ import { CueList, Disclosure, GripBadge, WeightDisplay } from "@/components/ui";
 import { NoteField } from "@/components/NoteField";
 import { SetRow } from "./SetRow";
 import { prescriptionLabel } from "./format";
+import { planRestAfterSet } from "@/lib/session/restLogic";
+import { startRest } from "@/lib/session/restTimer";
 import {
   setExerciseNote,
   setSetNote,
@@ -87,7 +89,27 @@ export function ExerciseCard({
               label={label}
               prescription={p}
               set={set}
-              onPatch={(patch) => updateSetResult(sectionId, p.id, i, patch)}
+              onPatch={(patch) => {
+                updateSetResult(sectionId, p.id, i, patch);
+                // auto-rest: only when completing (not un-checking) and only
+                // if another set of THIS exercise remains (spec: no timer
+                // after the final set / between exercises)
+                if (patch.completed === true) {
+                  const plan = planRestAfterSet(
+                    rounds !== undefined ? "CIRCUIT" : "STRAIGHT_SETS",
+                    p,
+                    result.sets.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
+                    i,
+                  );
+                  if (plan) {
+                    startRest(
+                      `${sectionId}/${p.id}/${i}`,
+                      `Set ${plan.nextSetIndex + 1} — ${name}`,
+                      plan.seconds,
+                    );
+                  }
+                }
+              }}
               onNote={(text) => setSetNote(sectionId, p.id, i, text)}
             />
           );

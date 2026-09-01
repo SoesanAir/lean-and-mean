@@ -9,6 +9,8 @@ import { sectionProgress } from "@/lib/session/progress";
 import { cls } from "@/lib/util";
 import { ExerciseCard } from "./ExerciseCard";
 import { SkillCard } from "./SkillCard";
+import { SkillPracticeCard } from "./SkillPracticeCard";
+import { WarmupCard } from "./WarmupCard";
 import { EmomCard } from "./EmomCard";
 import { AmrapCard } from "./AmrapCard";
 import { FlowCard } from "./FlowCard";
@@ -111,6 +113,12 @@ function SectionBody({
   readOnly?: boolean;
 }) {
   switch (section.type) {
+    case "WARMUP":
+      return result.warmup ? <WarmupCard section={section} result={result.warmup} readOnly={readOnly} /> : null;
+    case "SKILL_PRACTICE":
+      return result.skillPractice ? (
+        <SkillPracticeCard section={section} result={result.skillPractice} readOnly={readOnly} />
+      ) : null;
     case "SKILL":
       return result.skill ? <SkillCard section={section} result={result.skill} readOnly={readOnly} /> : null;
     case "EMOM":

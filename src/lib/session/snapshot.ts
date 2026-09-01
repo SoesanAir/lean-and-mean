@@ -82,6 +82,25 @@ function emptySectionResult(section: WorkoutSection): SectionResult {
         sectionId: section.id,
         timedBlock: { completed: false, timer: idleTimer(), cycles: [] },
       };
+    case "WARMUP":
+      return {
+        sectionId: section.id,
+        warmup: { completed: false, currentIndex: 0, movementsDone: 0, timer: idleTimer() },
+      };
+    case "SKILL_PRACTICE":
+      return {
+        sectionId: section.id,
+        skillPractice: {
+          selectedVariationId: section.variationId,
+          manualAdjustment: null,
+          completed: false,
+          timer: idleTimer(),
+          sets: Array.from({ length: section.prescription.sets }, (_, i) => ({
+            setIndex: i,
+            completed: false,
+          })),
+        },
+      };
     case "FLOW":
       return {
         sectionId: section.id,

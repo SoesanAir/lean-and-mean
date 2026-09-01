@@ -1,6 +1,7 @@
 "use client";
 
 import { retryNow, useSyncStatus } from "@/lib/cloud/sync";
+import { useRestTimer } from "@/lib/session/restTimer";
 import { cls } from "@/lib/util";
 
 const LABELS: Record<string, { text: string; dot: string; tone: string }> = {
@@ -14,7 +15,9 @@ const LABELS: Record<string, { text: string; dot: string; tone: string }> = {
 /** Small glanceable sync indicator (spec: know your data is safe mid-workout). */
 export function SyncBadge() {
   const status = useSyncStatus();
+  const rest = useRestTimer();
   if (status === "off") return null;
+  if (rest) return null; // the rest bar occupies this spot while resting
   const l = LABELS[status];
   if (!l) return null;
 

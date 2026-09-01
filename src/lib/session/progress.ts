@@ -8,6 +8,13 @@ export interface ProgressInfo {
 
 function sectionUnits(r: SectionResult): { done: number; total: number } {
   if (r.skill) return { done: r.skill.completed ? 1 : 0, total: 1 };
+  if (r.warmup) return { done: r.warmup.completed ? 1 : 0, total: 1 };
+  if (r.skillPractice) {
+    return {
+      done: r.skillPractice.sets.filter((s) => s.completed || s.skipped).length,
+      total: r.skillPractice.sets.length,
+    };
+  }
   if (r.timedBlock) {
     if (r.timedBlock.cycles.length > 0) {
       return {

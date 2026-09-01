@@ -148,6 +148,37 @@ immutable `prescription_snapshot` + `performance`, and scopes every query to the
 user resolved from the token hash. Tokens are managed in-app (Progress → Coach
 API access), stored hash-only in `coach_tokens` (migration 0004).
 
+## 4.8 Rest timers, Free Movement warm-up, skill progressions (built 2026-09-01)
+
+- **Rest timers**: `restSeconds` lives on straight-set prescriptions (data, seeded per work
+  type: 90 s heavy compounds, 60 s grip/carries, 45 s core/mobility, 30 s dead bugs).
+  Completing a non-final set of the SAME exercise starts a singleton countdown
+  (`lib/session/restTimer.ts`, absolute `endsAt`, persisted — survives refresh/backgrounding);
+  decision logic is pure (`lib/session/restLogic.ts`). No auto-rest in circuits (next work is a
+  different exercise), timed blocks, or after final sets. UI: non-blocking floating bar with
+  Skip / ±15 s, vibration + flash at zero.
+- **Free Movement warm-up**: movement library `lib/seed/warmups.ts` (39 movements, mandatory
+  written instructions, tags, no invented video URLs — UI offers a YouTube-search fallback).
+  `lib/generate/warmup.ts` builds a balanced 8–12-movement (~5 min) sequence per session:
+  one movement per slot (pulse/shoulders/wrists/spine/hips/squat/floor-flow), 1–2 biased by the
+  day's work (handstand → wrist/scapula prep), avoiding movements from the last 2 warm-ups.
+  Auto-advancing 30 s player; the generated selection is snapshotted (repetition history comes
+  from past snapshots).
+- **Skill progressions**: `lib/seed/skills.ts` — SkillFamily → ordered SkillVariation levels
+  (14 families; ring/bar families seeded but unavailable until equipment arrives). Sessions get
+  warm-up → skill → strength: handstand days convert their existing practice slot to the
+  progression system (same duration); other days get ONE 6-min rotating block
+  (l-sit / pistol / crow). **Scale Down/Up** moves exactly one level: the snapshot keeps the
+  originally prescribed variation, the result records `selectedVariationId` +
+  `manualAdjustment`; history shows prescribed vs performed. The next plan starts from the
+  latest PERFORMED variation (`lib/generate/baseline.ts`) — completion never auto-promotes.
+  Starting levels reflect the athlete: handstand at walking level, L-sit at tuck, pistol at box.
+- **Shared "i" info mechanism** (`components/InfoSheet.tsx`): name, short cue, steps, cues,
+  stop condition, optional verified video / YouTube-search fallback — used by warm-up movements
+  and skill variations; opening it never touches running timers.
+- Backward compatibility: all new fields are additive inside the session jsonb documents — no
+  DB migration; legacy sessions (old SKILL sections, no warm-up, no restSeconds) load unchanged.
+
 ## 5. Future (documented, not built)
 
 Spec §29 preserved: Weeks 2–3 ballistic rows; gravedigger later; pull-up bar → pull-ups/chin-ups;

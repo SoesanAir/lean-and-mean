@@ -17,6 +17,8 @@ import type {
 import { EMPHASIS_LABELS } from "../types.ts";
 import { sessionProgress } from "../session/progress.ts";
 import { EXERCISES, EXERCISES_BY_ID } from "../seed/exercises.ts";
+import { getSkillVariation, SKILL_FAMILIES_BY_ID } from "../seed/skills.ts";
+import { WARMUP_MOVEMENTS_BY_ID } from "../seed/warmups.ts";
 
 // ---------- small helpers ----------
 
@@ -90,6 +92,41 @@ export function shapeSessionDetail(session: WorkoutSession) {
     };
 
     switch (section.type) {
+      case "WARMUP":
+        return {
+          ...base,
+          targetMinutes: section.targetMinutes,
+          movements: section.movements.map(
+            (m) => WARMUP_MOVEMENTS_BY_ID[m.movementId]?.name ?? m.movementId,
+          ),
+          result: result?.warmup
+            ? { completed: result.warmup.completed, movementsDone: result.warmup.movementsDone }
+            : null,
+        };
+      case "SKILL_PRACTICE": {
+        const sp = result?.skillPractice;
+        const family = SKILL_FAMILIES_BY_ID[section.familyId];
+        const prescribed = getSkillVariation(section.familyId, section.variationId);
+        const performed = sp ? getSkillVariation(section.familyId, sp.selectedVariationId) : null;
+        return {
+          ...base,
+          skillFamily: family?.name ?? section.familyId,
+          prescribedVariation: prescribed?.name ?? section.variationId,
+          performedVariation: performed?.name ?? sp?.selectedVariationId ?? null,
+          manualAdjustment: sp?.manualAdjustment ?? null,
+          prescription: section.prescription,
+          sets: sp
+            ? sp.sets.map((s) => ({
+                setIndex: s.setIndex + 1,
+                completed: s.completed,
+                actualReps: s.actualReps,
+                actualDurationSec: s.actualDurationSec,
+                note: noteText(s.note),
+              }))
+            : [],
+          result: sp ? { completed: sp.completed, note: noteText(sp.note) } : null,
+        };
+      }
       case "SKILL":
         return {
           ...base,
@@ -454,6 +491,11 @@ function sessionExerciseIds(session: WorkoutSession): string[] {
         break;
       case "FLOW":
         ids.push(...section.movements.map((m) => m.exerciseId));
+        break;
+      case "WARMUP":
+      case "SKILL_PRACTICE":
+        // separate id spaces (warm-up movements / skill variations) — not
+        // part of the exercise catalog
         break;
     }
   }

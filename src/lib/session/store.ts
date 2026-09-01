@@ -5,13 +5,17 @@ import type {
   DailyLog,
   Note,
   SetResult,
+  SkillPracticeResult,
   SkillResult,
   TimedBlockResult,
   TimerState,
+  WarmupResult,
   WorkoutFeedback,
   WorkoutSession,
 } from "../types";
 import { getDayTemplate } from "../seed/week1";
+import { generateSessionPlan } from "../generate/plan";
+import { getSkillVariation, neighborVariation } from "../seed/skills";
 import { buildSession } from "./snapshot";
 import { nowISO, todayISO, uid } from "../util";
 
@@ -109,9 +113,10 @@ export function makeOrUpdateNote(existing: Note | undefined, text: string): Note
 export function startWorkout(day: number): void {
   update((d) => {
     if (d.activeSession) return; // resume existing — never silently overwrite
-    const template = { ...getDayTemplate(day) };
+    // enrich the template with warm-up + skill practice (then snapshot it)
+    const plan = generateSessionPlan(getDayTemplate(day), d.completedSessions);
     const quoteOverride = d.quoteOverrides[day];
-    const session = buildSession(template, todayISO());
+    const session = buildSession(plan, todayISO());
     if (quoteOverride) session.quote = quoteOverride;
     d.activeSession = session;
   });
@@ -281,15 +286,103 @@ export function setSkillNote(sectionId: string, text: string): void {
 
 export function updateTimer(
   sectionId: string,
-  kind: "timedBlock" | "skill",
+  kind: "timedBlock" | "skill" | "warmup" | "skillPractice",
   patch: Partial<TimerState>,
 ): void {
   update((d) =>
     withSection(d, sectionId, (r) => {
-      const holder = kind === "timedBlock" ? r.timedBlock : r.skill;
+      const holder = r[kind];
       if (holder) Object.assign(holder.timer, patch);
     }),
   );
+}
+
+// ---------------- warm-up ----------------
+
+export function updateWarmup(sectionId: string, patch: Partial<WarmupResult>): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      if (r.warmup) Object.assign(r.warmup, patch);
+    }),
+  );
+}
+
+export function setWarmupNote(sectionId: string, text: string): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      if (r.warmup) r.warmup.note = makeOrUpdateNote(r.warmup.note, text);
+    }),
+  );
+}
+
+// ---------------- skill practice (progressions) ----------------
+
+export function updateSkillPractice(sectionId: string, patch: Partial<SkillPracticeResult>): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      if (r.skillPractice) Object.assign(r.skillPractice, patch);
+    }),
+  );
+}
+
+export function updateSkillSet(sectionId: string, setIndex: number, patch: Partial<SetResult>): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      const set = r.skillPractice?.sets[setIndex];
+      if (set) Object.assign(set, patch);
+    }),
+  );
+}
+
+export function setSkillSetNote(sectionId: string, setIndex: number, text: string): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      const set = r.skillPractice?.sets[setIndex];
+      if (set) set.note = makeOrUpdateNote(set.note, text);
+    }),
+  );
+}
+
+export function setSkillPracticeNote(sectionId: string, text: string): void {
+  update((d) =>
+    withSection(d, sectionId, (r) => {
+      if (r.skillPractice) r.skillPractice.note = makeOrUpdateNote(r.skillPractice.note, text);
+    }),
+  );
+}
+
+/**
+ * Scale Down / Scale Up: move exactly one progression level within the same
+ * family. The snapshot keeps the ORIGINALLY prescribed variation untouched;
+ * only the result's selected variation changes, and the manual adjustment is
+ * recorded relative to the original prescription.
+ */
+export function scaleSkill(sectionId: string, direction: "up" | "down"): void {
+  update((d) => {
+    const session = d.activeSession;
+    if (!session) return;
+    const section = session.snapshot.sections.find((s) => s.id === sectionId);
+    const result = session.sections.find((r) => r.sectionId === sectionId)?.skillPractice;
+    if (!section || section.type !== "SKILL_PRACTICE" || !result) return;
+
+    const next = neighborVariation(section.familyId, result.selectedVariationId, direction);
+    if (!next) return; // already at the boundary
+
+    const original = getSkillVariation(section.familyId, section.variationId);
+    result.selectedVariationId = next.id;
+    result.manualAdjustment =
+      !original || next.level === original.level
+        ? null
+        : next.level > original.level
+          ? "scaled_up"
+          : "scaled_down";
+    // re-scaffold set slots for the new variation's prescription
+    result.sets = Array.from({ length: next.defaultPrescription.sets }, (_, i) => ({
+      setIndex: i,
+      completed: false,
+    }));
+    result.completed = false;
+  });
 }
 
 // ---------------- daily log ----------------

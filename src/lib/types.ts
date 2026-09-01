@@ -94,6 +94,8 @@ interface PrescriptionBase {
 export interface SetsPrescription extends PrescriptionBase {
   kind: "SETS";
   sets: number;
+  /** prescribed rest between sets of THIS exercise (data, not UI logic) */
+  restSeconds?: number;
   /** e.g. 5, or a range like "8–12" */
   reps?: number | string;
   perSide?: boolean;
@@ -184,6 +186,123 @@ export interface IntervalSection extends SectionBase {
   effort?: string; // "LIGHT effort."
 }
 
+// ---------- Free Movement warm-up (movement library + generated sections) ----------
+
+export type WarmupTag =
+  | "pulse"
+  | "neck"
+  | "shoulders"
+  | "scapula"
+  | "wrists"
+  | "spine"
+  | "rotation"
+  | "hips"
+  | "hamstrings"
+  | "ankles"
+  | "knees"
+  | "squat"
+  | "lunge"
+  | "floor-flow"
+  | "compression"
+  | "handstand-prep"
+  | "pistol-prep"
+  | "ring-prep";
+
+/** Reusable warm-up movement definition. Written instructions are MANDATORY. */
+export interface WarmupMovement {
+  id: string; // stable slug
+  name: string;
+  shortCue: string; // one-line "what this is"
+  instructions: string[]; // step-by-step, enough to perform without googling
+  tips?: string[]; // 1–3 technique cues
+  durationSeconds: number; // default 30
+  tags: WarmupTag[];
+  /** only verified, curated URLs — never invented. Absent = written instructions only. */
+  videoUrl?: string;
+}
+
+export interface WarmupSection extends SectionBase {
+  type: "WARMUP";
+  /** generated selection, snapshotted into the session */
+  movements: Array<{ movementId: string; durationSeconds: number }>;
+  targetMinutes: number;
+}
+
+export interface WarmupResult {
+  completed: boolean;
+  /** index of the movement currently being performed */
+  currentIndex: number;
+  movementsDone: number;
+  timer: TimerState; // per-movement segment timer
+  note?: Note;
+}
+
+// ---------- Calisthenics skill progressions ----------
+
+export type SkillPrescriptionType = "HOLD_SEC" | "REPS" | "ATTEMPTS";
+
+export interface SkillPrescription {
+  sets: number;
+  reps?: number;
+  holdSec?: number;
+  attempts?: number;
+  perSide?: boolean;
+}
+
+export interface SkillVariation {
+  id: string; // stable slug, e.g. "l-sit-tuck"
+  level: number; // 1 = easiest within the family; strictly ordered
+  name: string;
+  shortCue: string;
+  instructions: string[]; // starting position, movement/hold, what counts, mandatory
+  tips?: string[];
+  /** obvious stop/failure condition where relevant */
+  stopWhen?: string;
+  prescriptionType: SkillPrescriptionType;
+  defaultPrescription: SkillPrescription;
+  equipment: Equipment[];
+  videoUrl?: string;
+  scaleNotes?: string;
+}
+
+export type SkillCategory =
+  | "HANDSTAND"
+  | "STATIC_HOLD"
+  | "LEGS"
+  | "PUSH"
+  | "PULL"
+  | "RINGS"
+  | "LOCOMOTION";
+
+export interface SkillFamily {
+  id: string; // stable slug, e.g. "l-sit"
+  name: string;
+  category: SkillCategory;
+  /** false when required equipment hasn't arrived (rings/bar) */
+  isAvailable: boolean;
+  variations: SkillVariation[]; // ordered by level ascending
+}
+
+export interface SkillPracticeSection extends SectionBase {
+  type: "SKILL_PRACTICE";
+  familyId: string;
+  /** originally prescribed variation (immutable in the snapshot) */
+  variationId: string;
+  prescription: SkillPrescription;
+  targetMinutes: number;
+}
+
+export interface SkillPracticeResult {
+  /** what is currently selected/being performed (Scale Up/Down changes this) */
+  selectedVariationId: string;
+  /** manual difficulty change relative to the prescribed variation */
+  manualAdjustment: "scaled_up" | "scaled_down" | null;
+  sets: SetResult[];
+  completed: boolean;
+  timer: TimerState;
+  note?: Note;
+}
+
 export type WorkoutSection =
   | SkillSection
   | StraightSetsSection
@@ -191,7 +310,9 @@ export type WorkoutSection =
   | EmomSection
   | AmrapSection
   | FlowSection
-  | IntervalSection;
+  | IntervalSection
+  | WarmupSection
+  | SkillPracticeSection;
 
 export type TimedSection = EmomSection | AmrapSection | FlowSection;
 
@@ -291,8 +412,12 @@ export interface SectionResult {
   exercises?: ExerciseResult[];
   /** EMOM / AMRAP / FLOW */
   timedBlock?: TimedBlockResult;
-  /** SKILL */
+  /** SKILL (legacy free practice — old sessions keep loading) */
   skill?: SkillResult;
+  /** WARMUP */
+  warmup?: WarmupResult;
+  /** SKILL_PRACTICE (progression-based) */
+  skillPractice?: SkillPracticeResult;
   note?: Note;
 }
 

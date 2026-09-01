@@ -29,6 +29,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d1-halo",
+            restSeconds: 45,
             kind: "SETS",
             exerciseId: "halo",
             grip: "HORNS",
@@ -46,6 +47,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d1-clean-press",
+            restSeconds: 90,
             kind: "SETS",
             exerciseId: "clean-strict-press",
             grip: "HANDLE",
@@ -63,6 +65,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d1-lunge",
+            restSeconds: 90,
             kind: "SETS",
             exerciseId: "front-rack-reverse-lunge",
             grip: "HANDLE",
@@ -81,6 +84,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d1-row",
+            restSeconds: 90,
             kind: "SETS",
             exerciseId: "one-arm-row",
             grip: "HANDLE",
@@ -98,6 +102,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d1-carry",
+            restSeconds: 60,
             kind: "SETS",
             exerciseId: "suitcase-carry",
             grip: "HANDLE",
@@ -352,6 +357,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d4-horn-curl",
+            restSeconds: 60,
             kind: "SETS",
             exerciseId: "horn-curl",
             grip: "HORNS",
@@ -429,6 +435,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-halo",
+            restSeconds: 45,
             kind: "SETS",
             exerciseId: "halo",
             grip: "HORNS",
@@ -446,6 +453,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-atw",
+            restSeconds: 45,
             kind: "SETS",
             exerciseId: "around-the-world",
             grip: "HANDLE",
@@ -464,6 +472,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-dsc",
+            restSeconds: 60,
             kind: "SETS",
             exerciseId: "deep-squat-curl",
             grip: "HORNS",
@@ -480,6 +489,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-nsdrag",
+            restSeconds: 60,
             kind: "SETS",
             exerciseId: "north-south-plank-drag",
             grip: "HANDLE",
@@ -497,6 +507,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-buh",
+            restSeconds: 60,
             kind: "SETS",
             exerciseId: "bottom-up-hold",
             grip: "BOTTOM_UP_HANDLE",
@@ -516,6 +527,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-ball",
+            restSeconds: 45,
             kind: "SETS",
             exerciseId: "ball-squeeze-hold",
             grip: "BALL",
@@ -532,6 +544,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-deadbug",
+            restSeconds: 30,
             kind: "SETS",
             exerciseId: "dead-bug",
             grip: "BODYWEIGHT",
@@ -548,6 +561,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d5-hollow",
+            restSeconds: 45,
             kind: "SETS",
             exerciseId: "hollow-hold",
             grip: "BODYWEIGHT",
@@ -608,6 +622,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d6-pushup",
+            restSeconds: 90,
             kind: "SETS",
             exerciseId: "push-up",
             grip: "BODYWEIGHT",
@@ -623,6 +638,7 @@ export const WEEK1: DayTemplate[] = [
         prescriptions: [
           {
             id: "d6-carry",
+            restSeconds: 60,
             kind: "SETS",
             exerciseId: "suitcase-carry",
             grip: "HANDLE",
