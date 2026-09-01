@@ -9,7 +9,10 @@ import {
   setSkillSetNote,
   updateSkillPractice,
   updateSkillSet,
+  updateTimer,
 } from "@/lib/session/store";
+import { holdsPlan } from "@/lib/timing/builders";
+import { TimerPlanPlayer } from "./TimerPlanPlayer";
 import { CheckCircle, Stepper } from "@/components/ui";
 import { InfoButton, InfoSheet, type MovementInfo } from "@/components/InfoSheet";
 import { NoteField } from "@/components/NoteField";
@@ -155,6 +158,22 @@ export function SkillPracticeCard({
           Scale Up
         </button>
       </div>
+
+      {/* guided hold timer — same engine as every other timed structure */}
+      {prescription.holdSec &&
+        (() => {
+          const plan = holdsPlan(section, result.selectedVariationId);
+          return plan ? (
+            <TimerPlanPlayer
+              plan={plan}
+              timer={result.timer}
+              onPatch={(p) => updateTimer(section.id, "skillPractice", p)}
+              allowSkip
+              allowAdjust
+              startLabel="START HOLDS"
+            />
+          ) : null;
+        })()}
 
       {/* set logging */}
       <div>
