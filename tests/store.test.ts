@@ -8,6 +8,7 @@ import {
   deleteCompletedSession,
   deleteDailyLog,
   finishWorkout,
+  patchCompletedSession,
   getState,
   setSetNote,
   setSectionNote,
@@ -99,6 +100,36 @@ describe("workout resume", () => {
     expect(
       s.activeSession?.sections.find((r) => r.sectionId === "d1-s3")?.exercises?.[0].sets[0].completed,
     ).toBe(true);
+  });
+});
+
+describe("editing a completed workout", () => {
+  it("corrects results in place, stamps editedAt, keeps the prescription snapshot, survives reload", () => {
+    startWorkout(1);
+    updateSetResult("d1-s3", "d1-clean-press", 0, { completed: true, actualRepsLeft: 5, actualRepsRight: 4 });
+    finishWorkout({ difficulty: "RIGHT", pain: false });
+    const id = getState().completedSessions[0].id;
+    const snapshotBefore = JSON.stringify(getState().completedSessions[0].snapshot);
+
+    patchCompletedSession(id, (s) => {
+      const set = s.sections.find((r) => r.sectionId === "d1-s3")!.exercises![0].sets[0];
+      set.actualRepsRight = 5; // fix the mistake
+      if (s.feedback) s.feedback.difficulty = "HARD";
+    });
+
+    __resetStoreForTests();
+    const edited = getState().completedSessions.find((x) => x.id === id)!;
+    expect(edited.sections.find((r) => r.sectionId === "d1-s3")!.exercises![0].sets[0].actualRepsRight).toBe(5);
+    expect(edited.feedback?.difficulty).toBe("HARD");
+    expect(edited.editedAt).toBeTruthy();
+    expect(edited.finishedAt).toBeTruthy(); // still a finished record
+    expect(JSON.stringify(edited.snapshot)).toBe(snapshotBefore); // prescription untouched
+  });
+
+  it("no-ops for an unknown session id", () => {
+    startWorkout(1);
+    finishWorkout({ difficulty: "RIGHT", pain: false });
+    expect(() => patchCompletedSession("nope", () => {})).not.toThrow();
   });
 });
 

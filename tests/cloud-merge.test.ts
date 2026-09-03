@@ -173,6 +173,37 @@ describe("mergeCloud — local deletions in flight", () => {
   });
 });
 
+describe("mergeCloud — edited finished session (sync-safe)", () => {
+  it("a locally edited finished session is kept and pushed, not clobbered by the older cloud copy", () => {
+    const s = makeSession(1, { finished: true });
+    const edited = JSON.parse(JSON.stringify(s)) as WorkoutSession;
+    edited.editedAt = T2;
+    edited.feedback = { difficulty: "HARD", pain: false }; // the correction
+    const meta = emptyMeta();
+    const key = sessionKey(s.id);
+    meta.remoteUpdatedAt[key] = T0;
+    meta.dirtyAt[key] = T2; // edit pending push
+    // cloud still has the OLD finished version
+    const r = mergeCloud(makeState({ completedSessions: [edited] }), meta, [sessionRow(s, T1)], []);
+    const kept = r.state.completedSessions.find((x) => x.id === s.id)!;
+    expect(kept.feedback?.difficulty).toBe("HARD"); // local edit preserved
+    expect(r.pushKeys).toContain(key); // and queued to overwrite the cloud
+  });
+
+  it("without a pending edit, the cloud finished copy stays canonical", () => {
+    const s = makeSession(1, { finished: true });
+    const stale = JSON.parse(JSON.stringify(s)) as WorkoutSession;
+    stale.feedback = { difficulty: "TOO_EASY", pain: false };
+    const meta = emptyMeta();
+    meta.remoteUpdatedAt[sessionKey(s.id)] = T1;
+    const cloud = JSON.parse(JSON.stringify(s)) as WorkoutSession;
+    cloud.feedback = { difficulty: "HARD", pain: false };
+    const r = mergeCloud(makeState({ completedSessions: [stale] }), meta, [sessionRow(cloud, T2)], []);
+    expect(r.state.completedSessions[0].feedback?.difficulty).toBe("HARD"); // cloud wins
+    expect(r.pushKeys).not.toContain(sessionKey(s.id));
+  });
+});
+
 describe("mergeCloud — remote deletions", () => {
   it("drops a previously synced session that disappeared from the cloud", () => {
     const s = makeSession(1, { finished: true });

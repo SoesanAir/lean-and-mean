@@ -450,6 +450,8 @@ export interface WorkoutSession {
   day: number;
   startedAt: string; // ISO
   finishedAt?: string; // ISO
+  /** set when a completed session was later corrected (edit mode) */
+  editedAt?: string; // ISO
   /** Immutable deep copy of the template at start (spec §23). Never mutate. */
   snapshot: DayTemplate;
   /** editable per-session quote (spec §8) */

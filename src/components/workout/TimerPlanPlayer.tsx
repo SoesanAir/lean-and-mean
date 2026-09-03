@@ -14,7 +14,8 @@ import {
   skipPhase,
   type TimerPlan,
 } from "@/lib/timing/engine";
-import { armAudio, isSoundEnabled, playCue, setSoundEnabled, subscribeSound } from "@/lib/timing/audio";
+import { armAudio, isSoundEnabled, playCue, resumeAudio, setSoundEnabled, subscribeSound } from "@/lib/timing/audio";
+import { releaseWakeLock, requestWakeLock } from "@/lib/timing/wakeLock";
 import { timerFinish, timerPause, timerStart, useTicker } from "@/lib/session/timer";
 import { cls, formatClock } from "@/lib/util";
 
@@ -66,6 +67,16 @@ export function TimerPlanPlayer({
       }
     }
   }, [running, snap.logicalSec, plan]);
+
+  // keep the screen awake (and audio alive) while the timer runs, so
+  // every-minute EMOM beeps and transition cues actually fire on iPhone
+  useEffect(() => {
+    if (running) {
+      requestWakeLock();
+      resumeAudio();
+      return () => releaseWakeLock();
+    }
+  }, [running]);
 
   // clear any pending flash timeout on unmount
   useEffect(() => () => {
@@ -154,8 +165,8 @@ export function TimerPlanPlayer({
               ? `${phase.roundWord ?? "Round"} ${phase.round}/${phase.totalRounds}`
               : plan.mode}
         </p>
-        {plan.mode !== "AMRAP" && snap.workoutRemainingSec !== null && !isCountdown && (
-          <span className="text-xs text-low tnum">{formatClock(snap.workoutRemainingSec)} left</span>
+        {plan.mode !== "AMRAP" && plan.mode !== "FORTIME" && snap.workoutRemainingSec !== null && !isCountdown && (
+          <span className="text-xs text-low tnum">{formatClock(snap.workoutRemainingSec)} total left</span>
         )}
         {plan.mode === "FORTIME" && phase?.durationSec !== 0 && snap.workoutRemainingSec !== null && (
           <span className="text-xs text-med tnum">cap {formatClock(snap.workoutRemainingSec)}</span>
@@ -188,6 +199,10 @@ export function TimerPlanPlayer({
         >
           {inFinal3 ? snap.phaseRemainingSec : bigClock}
         </p>
+        {/* make it unmistakable that the big number is THIS interval, not the whole workout */}
+        {!isCountdown && !openEnded && plan.mode !== "AMRAP" && phase?.roundWord && (
+          <p className="label mt-0.5 text-low">left this {phase.roundWord.toLowerCase()}</p>
+        )}
       </div>
 
       {/* NEXT — the athlete never has to remember the sequence */}

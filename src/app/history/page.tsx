@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { EditSessionForm } from "@/components/workout/EditSessionForm";
 import { deleteCompletedSession } from "@/lib/session/store";
 import { useAppState, useMounted } from "@/lib/session/useStore";
 import { sessionProgress } from "@/lib/session/progress";
@@ -44,6 +45,7 @@ function HistoryContent() {
   const mounted = useMounted();
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   if (!mounted) {
     return (
@@ -76,9 +78,12 @@ function HistoryContent() {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </Link>
-        <p className="label">
-          COMPLETED · {session.date}
-        </p>
+        <div className="text-center">
+          <p className="label">COMPLETED · {session.date}</p>
+          {session.editedAt && (
+            <p className="text-xs text-low">Edited {new Date(session.editedAt).toLocaleDateString()}</p>
+          )}
+        </div>
         <span className="w-11" aria-hidden />
       </div>
 
@@ -137,6 +142,18 @@ function HistoryContent() {
 
         <button
           type="button"
+          onClick={() => setEditing(true)}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface font-display text-base font-semibold text-hi active:scale-[0.98]"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          EDIT WORKOUT
+        </button>
+
+        <button
+          type="button"
           onClick={() => setConfirmDelete(true)}
           className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-danger/40 font-display text-base font-semibold text-danger active:scale-[0.98]"
         >
@@ -148,6 +165,8 @@ function HistoryContent() {
           DELETE THIS WORKOUT
         </button>
       </div>
+
+      {editing && <EditSessionForm session={session} onClose={() => setEditing(false)} />}
 
       {confirmDelete && (
         <ConfirmSheet

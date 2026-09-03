@@ -99,10 +99,16 @@ function tone(freq: number, startInSec: number, durSec: number, volume = 0.5, ty
   osc.stop(t0 + durSec + 0.01);
 }
 
+/** iOS suspends the context on interruptions — nudge it back before a cue */
+export function resumeAudio(): void {
+  if (ctx && ctx.state === "suspended") void ctx.resume();
+}
+
 export function playCue(sound: CueSound): void {
   if (!isSoundEnabled()) return;
+  if (ctx && ctx.state === "suspended") void ctx.resume();
   if (!ctx || ctx.state !== "running") {
-    // not armed (or backgrounded) — haptic fallback only
+    // not armed yet (or resume hasn't landed) — haptic fallback only
     vibrateFor(sound);
     return;
   }

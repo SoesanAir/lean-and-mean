@@ -429,6 +429,20 @@ export function deleteDailyLog(date: string): void {
   });
 }
 
+/**
+ * Correct a mistake in an already-finished session. The prescription snapshot
+ * stays immutable — only performance/feedback/notes change. `editedAt` is
+ * stamped and the change syncs (the edited finished record wins by updated_at).
+ */
+export function patchCompletedSession(id: string, mutate: (s: WorkoutSession) => void): void {
+  update((d) => {
+    const s = d.completedSessions.find((x) => x.id === id);
+    if (!s) return;
+    mutate(s);
+    s.editedAt = nowISO();
+  });
+}
+
 // ---------------- cloud sync support ----------------
 
 /**

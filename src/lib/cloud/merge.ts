@@ -80,6 +80,7 @@ export function mergeCloud(
   const pushKeys = new Set<string>();
 
   const cloudById = new Map(cloudSessions.map((r) => [r.id, r]));
+  const localCompletedById = new Map(local.completedSessions.map((s) => [s.id, s]));
 
   // ---------- completed sessions ----------
   const completed: WorkoutSession[] = [];
@@ -87,9 +88,17 @@ export function mergeCloud(
     // locally deleted but the cloud delete hasn't flushed yet — don't resurrect
     if (nextMeta.pendingDeletes.includes(sessionKey(row.id))) continue;
     if (row.finished_at) {
-      // rule 1: finished cloud sessions are canonical
-      completed.push(rowToSession(row));
       const key = sessionKey(row.id);
+      const localCopy = localCompletedById.get(row.id);
+      // rule 1b: a local EDIT of a finished session (dirty, pending push) must
+      // not be clobbered by the older cloud copy — keep local, let it push.
+      if (localCopy && nextMeta.dirtyAt[key]) {
+        completed.push(localCopy);
+        pushKeys.add(key);
+        continue;
+      }
+      // rule 1: finished cloud sessions are otherwise canonical
+      completed.push(rowToSession(row));
       nextMeta.remoteUpdatedAt[key] = row.updated_at;
       nextMeta.shadows[key] = serializeSession(rowToSession(row));
       delete nextMeta.dirtyAt[key];
