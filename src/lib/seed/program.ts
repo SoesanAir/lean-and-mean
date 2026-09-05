@@ -7,6 +7,9 @@ import { WEEK2 } from "./week2";
 // is published — completed history is immutable and never affected.
 export const CURRENT_WEEK: DayTemplate[] = WEEK2;
 
+// Human-facing week number for the published week (shown as "WEEK n — DAY d").
+export const CURRENT_WEEK_NUMBER = 2;
+
 // Anchor for "which day is next": sessions completed BEFORE this date belong
 // to a previous week and don't count toward the current week's placement, so
 // a freshly published week opens on Day 1 even if earlier days share numbers.

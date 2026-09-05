@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppState, useMounted } from "@/lib/session/useStore";
-import { CURRENT_WEEK, getCurrentDayTemplate, WEEK_START_DATE } from "@/lib/seed/program";
+import { CURRENT_WEEK, CURRENT_WEEK_NUMBER, getCurrentDayTemplate, WEEK_START_DATE } from "@/lib/seed/program";
 import { buildSession } from "@/lib/session/snapshot";
 import { nextProgramDay, sectionProgress, sessionProgress } from "@/lib/session/progress";
 import { discardActiveWorkout, setDayQuote, setSessionQuote, startWorkout } from "@/lib/session/store";
@@ -61,8 +61,12 @@ export default function TodayPage() {
 
   return (
     <main>
-      {/* day navigation (spec §30.12 — browse all 7 days for testing) */}
-      <div className="flex items-center justify-between px-2 pt-2">
+      {/* day navigation (spec §30.12 — browse all 7 days for testing).
+          Top padding clears the notch / Dynamic Island so the buttons stay tappable. */}
+      <div
+        className="flex items-center justify-between px-2 pb-1"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 8px)" }}
+      >
         <button
           type="button"
           aria-label="Previous day"
@@ -121,6 +125,7 @@ export default function TodayPage() {
         quote={isLive ? active!.quote : (state.quoteOverrides[day] ?? template.quote)}
         onQuoteChange={(q) => (isLive ? setSessionQuote(q) : setDayQuote(day, q))}
         percent={template.isRest ? null : progress.percent}
+        weekNumber={CURRENT_WEEK_NUMBER}
         sticky
       />
 
@@ -128,7 +133,7 @@ export default function TodayPage() {
       {active && active.day !== day && (
         <div className="mx-4 mt-3 flex items-center justify-between gap-2 rounded-xl border border-volt/40 bg-volt/10 px-3 py-2.5">
           <p className="text-sm text-hi">
-            Workout in progress: <span className="font-bold">DAY {active.day}</span>
+            Workout in progress: <span className="font-bold">WEEK {CURRENT_WEEK_NUMBER} — DAY {active.day}</span>
           </p>
           <button
             type="button"

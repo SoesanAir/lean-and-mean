@@ -15,12 +15,15 @@ export function TodayHeader({
   onQuoteChange,
   percent,
   sticky,
+  weekNumber,
 }: {
   template: DayTemplate;
   quote: string;
   onQuoteChange?: (q: string) => void;
   percent: number | null;
   sticky?: boolean;
+  /** shown as "WEEK n — DAY d"; omit to show just "DAY d" */
+  weekNumber?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(quote);
@@ -35,7 +38,9 @@ export function TodayHeader({
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="label">DAY {template.day}</p>
+          <p className="label">
+            {weekNumber ? `WEEK ${weekNumber} — DAY ${template.day}` : `DAY ${template.day}`}
+          </p>
           <h1 className="font-display text-[28px] font-bold leading-none">
             {template.intensity === "REST" ? "REST / RECOVERY" : `${template.intensity} — ${template.name.replace(/^(HARD|MEDIUM|LIGHT)\s*/i, "")}`}
           </h1>
