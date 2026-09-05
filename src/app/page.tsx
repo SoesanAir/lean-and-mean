@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppState, useMounted } from "@/lib/session/useStore";
-import { getDayTemplate, WEEK1 } from "@/lib/seed/week1";
+import { CURRENT_WEEK, getCurrentDayTemplate, WEEK_START_DATE } from "@/lib/seed/program";
 import { buildSession } from "@/lib/session/snapshot";
 import { nextProgramDay, sectionProgress, sessionProgress } from "@/lib/session/progress";
 import { discardActiveWorkout, setDayQuote, setSessionQuote, startWorkout } from "@/lib/session/store";
@@ -28,8 +28,8 @@ export default function TodayPage() {
   const mounted = useMounted();
 
   // default: resume the active workout's day, else the first not-yet-completed day
-  const day = selectedDay ?? active?.day ?? (mounted ? nextProgramDay(state.completedSessions) : 1);
-  const template = getDayTemplate(day);
+  const day = selectedDay ?? active?.day ?? (mounted ? nextProgramDay(state.completedSessions, WEEK_START_DATE) : 1);
+  const template = getCurrentDayTemplate(day);
   const isLive = active !== null && active.day === day;
 
   // preview scaffold for non-started days (read-only, not persisted)
@@ -76,8 +76,8 @@ export default function TodayPage() {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <div className="flex gap-0.5" role="tablist" aria-label="Week 1 days">
-          {WEEK1.map((d) => (
+        <div className="flex gap-0.5" role="tablist" aria-label="Program days">
+          {CURRENT_WEEK.map((d) => (
             <button
               key={d.day}
               type="button"

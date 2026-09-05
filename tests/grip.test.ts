@@ -67,12 +67,21 @@ describe("grip as first-class data", () => {
   });
 
   it("grip survives the session snapshot and storage round-trip", () => {
+    const firstPresc = () => {
+      const s = getState().activeSession!;
+      for (const sec of s.snapshot.sections) {
+        if ((sec.type === "STRAIGHT_SETS" || sec.type === "CIRCUIT") && sec.prescriptions.length) {
+          return sec.prescriptions[0];
+        }
+      }
+      throw new Error("no prescription in active session snapshot");
+    };
+
     startWorkout(1);
+    const gripBefore = firstPresc().grip;
+    expect(VALID_GRIPS).toContain(gripBefore);
+
     __resetStoreForTests();
-    const session = getState().activeSession!;
-    const halo = session.snapshot.sections.find((s) => s.id === "d1-s2");
-    expect(halo && "prescriptions" in halo && halo.prescriptions[0].grip).toBe("HORNS");
-    const lunge = session.snapshot.sections.find((s) => s.id === "d1-s4");
-    expect(lunge && "prescriptions" in lunge && lunge.prescriptions[0].gripNotes).toBe("Rack position");
+    expect(firstPresc().grip).toBe(gripBefore); // survives storage round-trip
   });
 });

@@ -55,12 +55,20 @@ export function sectionProgress(r: SectionResult): ProgressInfo {
  * without a completed session. When days 1–6 are all done it lands on 7
  * (rest); once the whole cycle is exhausted it continues after the most
  * recently completed day.
+ *
+ * `weekStart` (YYYY-MM-DD) scopes placement to the current program week:
+ * sessions completed before it belong to a previous week and are ignored, so a
+ * freshly published week opens on Day 1 even though day numbers repeat weekly.
+ * Omitted → all history counts (legacy single-week behaviour).
  */
-export function nextProgramDay(completedSessions: WorkoutSession[]): number {
-  const done = new Set(completedSessions.map((s) => s.day));
+export function nextProgramDay(completedSessions: WorkoutSession[], weekStart?: string): number {
+  const inWeek = weekStart
+    ? completedSessions.filter((s) => s.date >= weekStart)
+    : completedSessions;
+  const done = new Set(inWeek.map((s) => s.day));
   for (let d = 1; d <= 7; d++) {
     if (!done.has(d)) return d;
   }
-  const latest = completedSessions[0]; // newest first
+  const latest = inWeek[0]; // newest first
   return latest ? (latest.day % 7) + 1 : 1;
 }

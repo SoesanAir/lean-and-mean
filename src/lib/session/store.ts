@@ -13,7 +13,7 @@ import type {
   WorkoutFeedback,
   WorkoutSession,
 } from "../types";
-import { getDayTemplate } from "../seed/week1";
+import { getCurrentDayTemplate } from "../seed/program";
 import { generateSessionPlan } from "../generate/plan";
 import { getSkillVariation, neighborVariation } from "../seed/skills";
 import { buildSession } from "./snapshot";
@@ -114,7 +114,7 @@ export function startWorkout(day: number): void {
   update((d) => {
     if (d.activeSession) return; // resume existing — never silently overwrite
     // enrich the template with warm-up + skill practice (then snapshot it)
-    const plan = generateSessionPlan(getDayTemplate(day), d.completedSessions);
+    const plan = generateSessionPlan(getCurrentDayTemplate(day), d.completedSessions);
     const quoteOverride = d.quoteOverrides[day];
     const session = buildSession(plan, todayISO());
     if (quoteOverride) session.quote = quoteOverride;
