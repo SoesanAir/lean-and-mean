@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>kb-swing motion preview</title>
+<style>
+ body{margin:0;font:14px/1.5 system-ui,sans-serif;background:#f4f4f5;color:#141414;padding:32px 20px;
+      display:flex;flex-direction:column;align-items:center;gap:20px}
+ h1{font-size:16px;margin:0}
+ p{margin:0;color:#71717a;font-size:12px;max-width:640px;text-align:center}
+ .row{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;justify-content:center}
+ .f{background:#fff;border:1px solid #e2e2e2;border-radius:14px;
+    background-image:url(swing-sheet.png);background-repeat:no-repeat}
+ .big{width:240px;height:240px}
+ .med{width:120px;height:120px;background-size:960px 600px}
+ .sm{width:80px;height:80px;background-size:640px 400px}
+ .ctl{display:flex;gap:10px;align-items:center}
+ button{font:inherit;padding:6px 13px;border-radius:8px;border:1px solid #d4d4d8;background:#fff;cursor:pointer}
+ input{width:240px}
+</style>
+<h1>kb-swing &mdash; motion preview (local render, pre-Rive)</h1>
+<p>This is my own rasterisation of the exact rig maths and easing curves, so it shows what the Rive
+   build will do before a single shape is placed. 33 frames of a 66-frame loop at 60fps.</p>
+<div class="row">
+  <div class="f big" id="a"></div>
+  <div class="f med" id="b"></div>
+  <div class="f sm" id="c"></div>
+</div>
+<h1 style="margin-top:18px">Key poses</h1>
+<img src="poses.png" style="max-width:min(900px,96vw);border:1px solid #e2e2e2;border-radius:14px;background:#fff">
+<div class="ctl">
+  <button id="pp">Pause</button>
+  <input type="range" id="sc" min="0" max="32" value="0">
+  <span>frame <b id="fn">0</b></span>
+</div>
+<script>
+const N=33, COLS=8, CELL=240, STEP=2;
+const els=[['a',1],['b',2],['c',3]].map(([id,d])=>({el:document.getElementById(id),d}));
+let i=0, playing=true;
+function show(n){
+  i=n; document.getElementById('fn').textContent=n*STEP;
+  const cx=(n%COLS)*CELL, cy=Math.floor(n/COLS)*CELL;
+  for(const {el,d} of els) el.style.backgroundPosition = (-cx/d)+'px '+(-cy/d)+'px';
+  document.getElementById('sc').value=n;
+}
+show(0);
+setInterval(()=>{ if(playing) show((i+1)%N); }, 1000/60*STEP);
+document.getElementById('pp').onclick=e=>{playing=!playing;e.target.textContent=playing?'Pause':'Play';};
+document.getElementById('sc').oninput=e=>{playing=false;document.getElementById('pp').textContent='Play';show(+e.target.value);};
+</script>

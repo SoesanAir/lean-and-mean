@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rive exercise animation preview</title>
+<style>
+  :root { color-scheme: light; --line:#e2e2e2; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 system-ui, -apple-system, sans-serif; background:#f4f4f5; color:#141414;
+         padding:28px 20px 64px; }
+  .wrap { max-width:1040px; margin:0 auto; display:flex; flex-direction:column; gap:28px; }
+  h1 { font-size:17px; font-weight:650; margin:0; }
+  h2 { font-size:12px; font-weight:650; margin:0 0 10px; text-transform:uppercase; letter-spacing:.07em; color:#71717a; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .hero { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
+  .stage { background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  #main { display:block; width:400px; height:400px; }
+  .poses { display:flex; gap:12px; flex-wrap:wrap; }
+  .pose { text-align:center; }
+  .pose canvas { display:block; width:150px; height:150px; }
+  .pose figcaption { font-size:11px; color:#71717a; margin-top:6px; }
+  .pose b { color:#141414; font-weight:600; }
+  .sizes { display:flex; gap:16px; align-items:flex-end; }
+  .sizes canvas { display:block; }
+  .s72 { width:72px; height:72px; } .s112 { width:112px; height:112px; } .s160 { width:160px; height:160px; }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+  button { font:inherit; padding:6px 13px; border-radius:8px; border:1px solid #d4d4d8; background:#fff; cursor:pointer; }
+  button:hover { background:#fafafa; }
+  input[type=range] { width:260px; }
+  code { background:#f4f4f5; padding:1px 5px; border-radius:4px; font-size:12px; }
+  #err { color:#b91c1c; font-family:ui-monospace, monospace; white-space:pre-wrap; font-size:12px; }
+  .meta { color:#71717a; font-size:12px; margin:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <h1>kb-swing &mdash; Lean &amp; Mean exercise animation</h1>
+    <p class="meta">Artboard <code>kb-swing</code> &middot; timeline <code>swing</code> &middot; 78 frames @ 60fps (1.3s/rep), looping.
+       Rig is driven bottom-up from planted feet, so the hips travel back rather than the torso pivoting in place.</p>
+  </div>
+
+  <div class="card">
+    <h2>Live loop</h2>
+    <div class="hero">
+      <div class="stage"><canvas id="main" width="800" height="800"></canvas></div>
+      <div>
+        <h2>At card sizes</h2>
+        <div class="sizes">
+          <div class="stage"><canvas class="s160" id="z160" width="320" height="320"></canvas></div>
+          <div class="stage"><canvas class="s112" id="z112" width="224" height="224"></canvas></div>
+          <div class="stage"><canvas class="s72"  id="z72"  width="144" height="144"></canvas></div>
+        </div>
+        <div class="controls">
+          <button id="toggle">Pause</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Key poses (scrubbed &mdash; check the mechanics here)</h2>
+    <div class="poses" id="poses"></div>
+  </div>
+
+  <div class="card">
+    <h2>Manual scrub</h2>
+    <div class="stage" style="width:300px"><canvas id="scrubc" width="600" height="600" style="width:298px;height:298px"></canvas></div>
+    <div class="controls">
+      <input type="range" id="scrub" min="0" max="78" value="0" step="1" />
+      <span>frame <b id="frameno">0</b> / 78</span>
+    </div>
+  </div>
+
+  <div id="err"></div>
+</div>
+
+<script src="https://unpkg.com/@rive-app/canvas@2.30.0"></script>
+<script>
+  const FPS = 60, TOTAL = 78;
+  const SRC = '/rive/exercises.riv';
+  const ART = 'kb-swing', ANIM = 'swing', SM = 'State Machine 1';
+  const err = document.getElementById('err');
+
+  const POSES = [
+    [0,  'Lockout / float',  'stacked, bell out front'],
+    [20, 'Descent',          'hips starting back'],
+    [30, 'Bottom / hinge',   'shins vertical, hips behind heels'],
+    [36, 'Max backswing',    'bell lags behind the hips'],
+    [44, 'Hip snap',         'hips driving through'],
+    [60, 'Lockout again',    'slight overshoot'],
+  ];
+
+  function live(canvas) {
+    return new rive.Rive({
+      src: SRC, canvas, artboard: ART, stateMachines: SM, autoplay: true,
+      fit: rive.Fit.contain,
+      onLoadError: (e) => { err.textContent = 'Load error: ' + e; },
+    });
+  }
+
+  function still(canvas, frame) {
+    const r = new rive.Rive({
+      src: SRC, canvas, artboard: ART, animations: ANIM, autoplay: false,
+      fit: rive.Fit.contain,
+      onLoad: () => { r.scrub(ANIM, frame / FPS); },
+      onLoadError: (e) => { err.textContent = 'Load error: ' + e; },
+    });
+    return r;
+  }
+
+  const main = live(document.getElementById('main'));
+  live(document.getElementById('z160'));
+  live(document.getElementById('z112'));
+  live(document.getElementById('z72'));
+
+  const posesEl = document.getElementById('poses');
+  for (const [frame, title, note] of POSES) {
+    const fig = document.createElement('figure');
+    fig.className = 'pose';
+    fig.style.margin = '0';
+    const box = document.createElement('div');
+    box.className = 'stage';
+    const c = document.createElement('canvas');
+    c.width = 300; c.height = 300;
+    box.appendChild(c);
+    const cap = document.createElement('figcaption');
+    cap.innerHTML = '<b>f' + frame + ' &middot; ' + title + '</b><br>' + note;
+    fig.appendChild(box); fig.appendChild(cap);
+    posesEl.appendChild(fig);
+    still(c, frame);
+  }
+
+  const scrubCanvas = document.getElementById('scrubc');
+  const scrubRive = still(scrubCanvas, 0);
+  const slider = document.getElementById('scrub');
+  const frameno = document.getElementById('frameno');
+  slider.addEventListener('input', () => {
+    frameno.textContent = slider.value;
+    scrubRive.scrub(ANIM, Number(slider.value) / FPS);
+  });
+
+  let playing = true;
+  document.getElementById('toggle').addEventListener('click', (e) => {
+    playing = !playing;
+    playing ? main.play() : main.pause();
+    e.target.textContent = playing ? 'Pause' : 'Play';
+  });
+</script>
+</body>
+</html>
